@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
-import { timeAgo, getCategoryInfo } from '@/lib/utils'
+import { timeAgo, getCategoryInfo, getArticleTypeLabel } from '@/lib/utils'
 import type { Profile, Article } from '@/types'
 
 type Tab = 'articles' | 'users'
@@ -30,7 +30,7 @@ export default function AdminPage() {
 
   async function loadAll() {
     const [artRes, userRes] = await Promise.all([
-      supabase.from('articles').select('*, profiles(*), article_translations(*)', ).order('created_at', { ascending: false }),
+      supabase.from('articles').select('*, profiles(*), article_translations(*)').order('created_at', { ascending: false }),
       supabase.from('profiles').select('*').order('created_at', { ascending: false }),
     ])
     const arts: Article[] = artRes.data ?? []
@@ -96,7 +96,9 @@ export default function AdminPage() {
       <div className="flex gap-0 border-b border-gray-200 mb-6">
         {(['articles', 'users'] as Tab[]).map(t => (
           <button key={t} onClick={() => setTab(t)}
-            className={`px-5 py-2.5 text-sm capitalize border-b-2 transition-colors ${tab === t ? 'border-green-700 text-green-700 font-medium' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+            className={`px-5 py-2.5 text-sm capitalize border-b-2 transition-colors ${
+              tab === t ? 'border-green-700 text-green-700 font-medium' : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}>
             {t}
           </button>
         ))}
@@ -108,33 +110,53 @@ export default function AdminPage() {
           {articles.map(article => {
             const t = article.article_translations?.find(t => t.language === 'english') ?? article.article_translations?.[0]
             const cat = getCategoryInfo(article.category)
+            // ─── NEW: type label in admin list ────────────────────────────
+            const typeLabel = getArticleTypeLabel(article.category, (article as any).article_type)
             return (
               <div key={article.id} className="bg-white border border-gray-200 rounded-xl px-4 py-3 flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                   <span>{cat.icon}</span>
                   <div className="min-w-0">
                     <p className="font-medium text-sm truncate">{t?.title ?? 'Untitled'}</p>
-                    <p className="text-xs text-gray-400">
-                      By {(article as any).profiles?.username ?? 'Unknown'} · {timeAgo(article.created_at)}
-                      {article.featured && <span className="ml-2 text-amber-600">★ Featured</span>}
+                    <p className="text-xs text-gray-400 flex items-center gap-2 flex-wrap">
+                      <span>By {(article as any).profiles?.username ?? 'Unknown'}</span>
+                      <span>·</span>
+                      <span>{timeAgo(article.created_at)}</span>
+                      {/* ─── NEW: type shown inline ───────────────────── */}
+                      {typeLabel && (
+                        <>
+                          <span>·</span>
+                          <span className="text-gray-500">{typeLabel}</span>
+                        </>
+                      )}
+                      {article.featured && <span className="text-amber-600">★ Featured</span>}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${article.status === 'published' ? 'bg-green-100 text-green-700' : article.status === 'draft' ? 'bg-gray-100 text-gray-500' : 'bg-red-100 text-red-500'}`}>
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${
+                    article.status === 'published' ? 'bg-green-100 text-green-700'
+                    : article.status === 'draft' ? 'bg-gray-100 text-gray-500'
+                    : 'bg-red-100 text-red-500'
+                  }`}>
                     {article.status}
                   </span>
                   {article.status !== 'published' && (
-                    <button onClick={() => setArticleStatus(article.id, 'published')} className="text-xs px-2 py-1 bg-green-700 text-white rounded-lg hover:bg-green-800">Publish</button>
+                    <button onClick={() => setArticleStatus(article.id, 'published')}
+                      className="text-xs px-2 py-1 bg-green-700 text-white rounded-lg hover:bg-green-800">Publish</button>
                   )}
                   {article.status === 'published' && (
-                    <button onClick={() => setArticleStatus(article.id, 'draft')} className="text-xs px-2 py-1 border border-gray-200 rounded-lg hover:bg-gray-50">Unpublish</button>
+                    <button onClick={() => setArticleStatus(article.id, 'draft')}
+                      className="text-xs px-2 py-1 border border-gray-200 rounded-lg hover:bg-gray-50">Unpublish</button>
                   )}
-                  <button onClick={() => toggleFeatured(article.id, article.featured)} className={`text-xs px-2 py-1 border rounded-lg ${article.featured ? 'border-amber-300 text-amber-600 bg-amber-50' : 'border-gray-200 hover:bg-gray-50'}`}>
+                  <button onClick={() => toggleFeatured(article.id, article.featured)}
+                    className={`text-xs px-2 py-1 border rounded-lg ${article.featured ? 'border-amber-300 text-amber-600 bg-amber-50' : 'border-gray-200 hover:bg-gray-50'}`}>
                     {article.featured ? '★ Unfeature' : '☆ Feature'}
                   </button>
-                  <Link href={`/articles/edit/${article.slug}`} className="text-xs px-2 py-1 border border-gray-200 rounded-lg hover:bg-gray-50">Edit</Link>
-                  <button onClick={() => deleteArticle(article.id)} className="text-xs px-2 py-1 border border-red-200 text-red-500 rounded-lg hover:bg-red-50">Delete</button>
+                  <Link href={`/articles/edit/${article.slug}`}
+                    className="text-xs px-2 py-1 border border-gray-200 rounded-lg hover:bg-gray-50">Edit</Link>
+                  <button onClick={() => deleteArticle(article.id)}
+                    className="text-xs px-2 py-1 border border-red-200 text-red-500 rounded-lg hover:bg-red-50">Delete</button>
                 </div>
               </div>
             )
