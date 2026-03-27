@@ -50,7 +50,10 @@ export default async function CategoryPage({ params }: Props) {
           {list.length === 0 ? (
             <div className="text-center py-16 bg-gray-50 rounded-xl border border-dashed border-gray-300">
               <p className="text-gray-400 mb-3">No {cat.label.toLowerCase()} articles yet.</p>
-              <Link href="/articles/create" className="text-sm px-4 py-2 bg-green-700 text-white rounded-lg hover:bg-green-800">
+              <Link
+                href={`/articles/create?category=${category}`}
+                className="text-sm px-4 py-2 bg-green-700 text-white rounded-lg hover:bg-green-800"
+              >
                 Be the first to contribute
               </Link>
             </div>
@@ -74,7 +77,10 @@ export default async function CategoryPage({ params }: Props) {
               ))}
             </div>
           </div>
-          <Link href="/articles/create" className="block text-center text-sm px-4 py-2.5 bg-green-700 text-white rounded-lg hover:bg-green-800">
+          <Link
+            href={`/articles/create?category=${category}`}
+            className="block text-center text-sm px-4 py-2.5 bg-green-700 text-white rounded-lg hover:bg-green-800"
+          >
             + Add {cat.label} article
           </Link>
         </div>

@@ -1,23 +1,57 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { CATEGORIES, LANGUAGES, createSlug, makeExcerpt } from '@/lib/utils'
 import RichEditor from '@/components/RichEditor'
+import PoemEditor from '@/components/PoemEditor'
+import SongEditor from '@/components/SongEditor'
 import ImageUpload from '@/components/ImageUpload'
 import type { Language, Category } from '@/types'
 
 interface LangContent { title: string; content: string }
 type LangMap = Record<Language, LangContent>
 
+// ─── NEW: image type ──────────────────────────────────────────────────────────
+interface UploadedImage { url: string; caption: string }
+
 const EMPTY: LangContent = { title: '', content: '' }
+
+const POEM_CATEGORIES: Category[] = ['poems']
+const SONG_CATEGORIES: Category[] = ['songs']
+
+function getEditorType(category: Category): 'rich' | 'poem' | 'song' {
+  if (POEM_CATEGORIES.includes(category)) return 'poem'
+  if (SONG_CATEGORIES.includes(category)) return 'song'
+  return 'rich'
+}
+
+const CATEGORY_META: Record<string, { hint: string; titlePlaceholder: string }> = {
+  history:  { hint: 'Write a detailed historical account with headings, dates, and key events.', titlePlaceholder: 'e.g. The Migration of the Mara People' },
+  songs:    { hint: 'Add verses, chorus, and bridge sections. You can label each section.', titlePlaceholder: 'Song title / name of the tune' },
+  poems:    { hint: 'Write one line per row. Use blank lines to separate stanzas.', titlePlaceholder: 'Poem title' },
+  stories:  { hint: 'Share a traditional story, folktale, or narrative.', titlePlaceholder: 'Story title' },
+  people:   { hint: 'Write a biography — early life, achievements, legacy.', titlePlaceholder: 'Full name of the person' },
+  places:   { hint: 'Describe the village — location, history, notable features.', titlePlaceholder: 'Village or place name' },
+  culture:  { hint: 'Document a cultural practice, festival, or tradition.', titlePlaceholder: 'e.g. Chapchar Kut Festival' },
+  religion: { hint: 'Write about religious beliefs, practices, or history.', titlePlaceholder: 'e.g. Christianity among the Mara people' },
+  language: { hint: 'Document language, dialects, vocabulary, or grammar.', titlePlaceholder: 'e.g. Tlosai Dialect Guide' },
+  other:    { hint: 'Anything else worth preserving about the Mara people.', titlePlaceholder: 'Article title' },
+}
 
 export default function CreateArticlePage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+
   const [user, setUser] = useState<any>(null)
   const [currentLang, setCurrentLang] = useState<Language>('english')
-  const [category, setCategory] = useState<Category>('history')
-  const [thumbnail, setThumbnail] = useState('')
+  const [category, setCategory] = useState<Category>(
+    (searchParams.get('category') as Category) ?? 'history'
+  )
+
+  // ─── CHANGED: was single `thumbnail` string, now array of images ───────────
+  const [images, setImages] = useState<UploadedImage[]>([])
+
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -53,21 +87,24 @@ export default function CreateArticlePage() {
       setError('Please write at least one language version with a title and content.')
       return
     }
-
     setSaving(true)
     setError('')
 
-    // Generate slug from first available english title or any title
     const baseTitle = langs['english'].title || langs[filled[0]].title
     let slug = createSlug(baseTitle)
-    // Ensure slug is unique
     const { data: existing } = await supabase.from('articles').select('id').eq('slug', slug).single()
     if (existing) slug = `${slug}-${Date.now()}`
 
-    // Create article
+    // ─── CHANGED: thumbnail_url is now first image url (or null) ─────────────
     const { data: article, error: articleError } = await supabase
       .from('articles')
-      .insert({ slug, category, status, author_id: user.id, thumbnail_url: thumbnail || null })
+      .insert({
+        slug,
+        category,
+        status,
+        author_id: user.id,
+        thumbnail_url: images[0]?.url ?? null,  // first image becomes cover
+      })
       .select()
       .single()
 
@@ -77,7 +114,20 @@ export default function CreateArticlePage() {
       return
     }
 
-    // Insert translations
+    // ─── NEW: save all images to images table ─────────────────────────────────
+    if (images.length > 0) {
+      const { error: imgError } = await supabase.from('images').insert(
+        images.map(img => ({
+          article_id: article.id,
+          url: img.url,
+          caption: img.caption || null,
+          uploaded_by: user.id,
+        }))
+      )
+      if (imgError) console.error('Failed to save images:', imgError.message)
+    }
+
+    // Translations
     const translations = filled.map(lang => ({
       article_id: article.id,
       language: lang,
@@ -100,28 +150,50 @@ export default function CreateArticlePage() {
   if (!user) return <div className="text-center py-16 text-gray-400">Loading...</div>
 
   const current = langs[currentLang]
+  const editorType = getEditorType(category)
+  const meta = CATEGORY_META[category] ?? CATEGORY_META['other']
+  const currentCat = CATEGORIES.find(c => c.value === category)
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8">
+
+      {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <h1 className="font-display text-2xl font-bold">Create New Article</h1>
+        <div>
+          <h1 className="font-display text-2xl font-bold">
+            {currentCat?.icon} New {currentCat?.label} Article
+          </h1>
+          <p className="text-sm text-gray-500 mt-0.5">{meta.hint}</p>
+        </div>
         <div className="flex gap-2">
-          <button onClick={() => handleSave('draft')} disabled={saving} className="px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 disabled:opacity-50">
-            Save as Draft
+          <button
+            onClick={() => handleSave('draft')}
+            disabled={saving}
+            className="px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 disabled:opacity-50 transition-colors"
+          >
+            Save Draft
           </button>
-          <button onClick={() => handleSave('published')} disabled={saving} className="px-4 py-2 bg-green-700 text-white rounded-lg text-sm hover:bg-green-800 disabled:opacity-50">
+          <button
+            onClick={() => handleSave('published')}
+            disabled={saving}
+            className="px-4 py-2 bg-green-700 text-white rounded-lg text-sm hover:bg-green-800 disabled:opacity-50 transition-colors"
+          >
             {saving ? 'Publishing...' : 'Publish'}
           </button>
         </div>
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mb-5">{error}</div>
+        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mb-5">
+          {error}
+        </div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main editor */}
+
+        {/* Main editor area */}
         <div className="lg:col-span-2">
+
           {/* Language tabs */}
           <div className="flex gap-0 border-b border-gray-200 mb-5">
             {LANGUAGES.map(lang => (
@@ -136,52 +208,75 @@ export default function CreateArticlePage() {
               >
                 <span className={`w-1.5 h-1.5 rounded-full ${hasContent(lang.value) ? 'bg-green-500' : 'bg-gray-300'}`} />
                 {lang.label}
-                {lang.value !== 'english' && <span className="text-xs text-gray-400">({lang.nativeLabel})</span>}
+                {lang.value !== 'english' && (
+                  <span className="text-xs text-gray-400">({lang.nativeLabel})</span>
+                )}
               </button>
             ))}
           </div>
 
-          <div className="flex flex-col gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Title in {LANGUAGES.find(l => l.value === currentLang)?.label}
-              </label>
-              <input
-                type="text"
-                value={current.title}
-                onChange={e => updateLang(currentLang, 'title', e.target.value)}
-                placeholder={`Article title in ${LANGUAGES.find(l => l.value === currentLang)?.label}...`}
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-base focus:outline-none focus:border-green-600"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Content in {LANGUAGES.find(l => l.value === currentLang)?.label}
-              </label>
-              <RichEditor
-                content={current.content}
-                onChange={val => updateLang(currentLang, 'content', val)}
-                placeholder={`Write article content in ${LANGUAGES.find(l => l.value === currentLang)?.label}...`}
-              />
-            </div>
+          {/* Title */}
+          <div className="mb-4">
+            <input
+              type="text"
+              value={current.title}
+              onChange={e => updateLang(currentLang, 'title', e.target.value)}
+              placeholder={meta.titlePlaceholder}
+              className={`w-full px-0 py-2 border-0 border-b-2 border-gray-200 focus:border-green-600 focus:outline-none bg-transparent transition-colors
+                ${editorType === 'poem' ? 'text-2xl font-display text-center' : 'text-xl font-display'}
+              `}
+            />
           </div>
 
-          {/* Language status */}
+          {/* Category-specific editor */}
+          {editorType === 'rich' && (
+            <RichEditor
+              content={current.content}
+              onChange={val => updateLang(currentLang, 'content', val)}
+              placeholder={`Write article content in ${LANGUAGES.find(l => l.value === currentLang)?.label}...`}
+            />
+          )}
+          {editorType === 'poem' && (
+            <PoemEditor
+              content={current.content}
+              onChange={val => updateLang(currentLang, 'content', val)}
+              language={currentLang}
+            />
+          )}
+          {editorType === 'song' && (
+            <SongEditor
+              content={current.content}
+              onChange={val => updateLang(currentLang, 'content', val)}
+              language={currentLang}
+            />
+          )}
+
+          {/* Language completion */}
           <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
             <p className="text-xs text-gray-500 mb-2 font-medium uppercase tracking-wide">Language completion</p>
             <div className="grid grid-cols-4 gap-2">
               {LANGUAGES.map(lang => (
-                <div key={lang.value} className={`text-center p-2 rounded-lg border text-xs ${hasContent(lang.value) ? 'bg-green-50 border-green-200 text-green-700' : 'bg-white border-gray-200 text-gray-400'}`}>
+                <button
+                  key={lang.value}
+                  onClick={() => setCurrentLang(lang.value)}
+                  className={`text-center p-2 rounded-lg border text-xs transition-colors ${
+                    hasContent(lang.value)
+                      ? 'bg-green-50 border-green-200 text-green-700'
+                      : 'bg-white border-gray-200 text-gray-400 hover:border-gray-300'
+                  }`}
+                >
                   <div className="font-medium">{lang.label}</div>
                   <div>{hasContent(lang.value) ? '✓ Done' : 'Empty'}</div>
-                </div>
+                </button>
               ))}
             </div>
           </div>
         </div>
 
-        {/* Sidebar settings */}
+        {/* Sidebar */}
         <div className="flex flex-col gap-5">
+
+          {/* Category picker */}
           <div className="bg-white border border-gray-200 rounded-xl p-4">
             <h3 className="text-sm font-semibold mb-3">Category</h3>
             <div className="grid grid-cols-2 gap-1.5">
@@ -189,9 +284,11 @@ export default function CreateArticlePage() {
                 <button
                   key={cat.value}
                   type="button"
-                  onClick={() => setCategory(cat.value)}
-                  className={`text-left text-xs px-2 py-1.5 rounded-lg border transition-colors ${
-                    category === cat.value ? 'bg-green-50 border-green-300 text-green-800' : 'border-gray-200 hover:bg-gray-50'
+                  onClick={() => setCategory(cat.value as Category)}
+                  className={`text-left text-xs px-2 py-2 rounded-lg border transition-colors ${
+                    category === cat.value
+                      ? 'bg-green-50 border-green-300 text-green-800 font-medium'
+                      : 'border-gray-200 hover:bg-gray-50 text-gray-600'
                   }`}
                 >
                   {cat.icon} {cat.label}
@@ -200,13 +297,36 @@ export default function CreateArticlePage() {
             </div>
           </div>
 
-          <div className="bg-white border border-gray-200 rounded-xl p-4">
-            <h3 className="text-sm font-semibold mb-3">Thumbnail Image</h3>
-            <ImageUpload onUpload={url => setThumbnail(url)} existingUrl={thumbnail} label="Upload thumbnail" />
-          </div>
+          {/* ─── CHANGED: ImageUpload now receives images array ─────────────── */}
+          {editorType !== 'poem' && (
+            <div className="bg-white border border-gray-200 rounded-xl p-4">
+              <h3 className="text-sm font-semibold mb-1">Images</h3>
+              <p className="text-xs text-gray-400 mb-3">First image will be used as the article cover.</p>
+              <ImageUpload
+                onUpload={imgs => setImages(imgs)}
+                existingImages={images}
+                label="Upload images"
+              />
+            </div>
+          )}
 
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-xs text-amber-700 leading-relaxed">
-            <strong>Tip:</strong> You can write in one language now and add other languages later by editing the article.
+          {/* Context tip */}
+          <div className={`rounded-xl p-4 text-xs leading-relaxed border ${
+            editorType === 'poem'
+              ? 'bg-purple-50 border-purple-200 text-purple-700'
+              : editorType === 'song'
+              ? 'bg-blue-50 border-blue-200 text-blue-700'
+              : 'bg-amber-50 border-amber-200 text-amber-700'
+          }`}>
+            {editorType === 'poem' && (
+              <><strong>Writing a poem?</strong> Each line becomes a verse line. Press Enter for a new line, blank line for a new stanza.</>
+            )}
+            {editorType === 'song' && (
+              <><strong>Writing song lyrics?</strong> Add sections like Verse, Chorus, and Bridge using the + button.</>
+            )}
+            {editorType === 'rich' && (
+              <><strong>Tip:</strong> You can write in one language now and add other languages later by editing the article.</>
+            )}
           </div>
         </div>
       </div>
