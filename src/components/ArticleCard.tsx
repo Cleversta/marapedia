@@ -22,7 +22,7 @@ export default function ArticleCard({ article, defaultLang = 'english' }: Props)
           <div className="h-40 overflow-hidden">
             <img
               src={article.thumbnail_url}
-              alt={translation.title}
+              alt={translation.title ?? ''}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             />
           </div>
@@ -38,12 +38,12 @@ export default function ArticleCard({ article, defaultLang = 'english' }: Props)
           </h3>
           {translation.excerpt && (
             <p className="text-sm text-gray-500 line-clamp-2 leading-relaxed">
-              {translation.excerpt || makeExcerpt(translation.content)}
+              {translation.excerpt || makeExcerpt(translation.content ?? '')}
             </p>
           )}
           <div className="mt-3 flex items-center justify-between text-xs text-gray-400">
             <span>{article.profiles?.username ?? 'Anonymous'}</span>
-            <span>{timeAgo(article.updated_at)}</span>
+            <span>{timeAgo(article.updated_at ?? article.created_at)}</span>
           </div>
         </div>
       </div>

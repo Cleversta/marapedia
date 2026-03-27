@@ -94,7 +94,6 @@ export default function ArticlePage() {
   const isPoem = article.category === 'poems'
   const showImages = images.length > 0 && !isSong && !isPoem
 
-  // ─── NEW: get readable type label ─────────────────────────────────────────
   const typeLabel = getArticleTypeLabel(article.category, (article as any).article_type)
 
   return (
@@ -120,7 +119,6 @@ export default function ArticlePage() {
         <span className={`text-xs px-2 py-0.5 rounded-full border ${cat.color}`}>
           {cat.icon} {cat.label}
         </span>
-        {/* ─── NEW: type badge ─────────────────────────────────────────────── */}
         {typeLabel && (
           <span className="text-xs px-2 py-0.5 rounded-full border bg-gray-50 text-gray-600 border-gray-200">
             {typeLabel}
@@ -159,7 +157,7 @@ export default function ArticlePage() {
         <div className="mb-6">
           {images.length === 1 ? (
             <div className="rounded-xl overflow-hidden cursor-zoom-in" onClick={() => setLightboxIndex(0)}>
-              <img src={images[0].url} alt={images[0].caption ?? translation?.title} className="w-full max-h-80 object-cover hover:opacity-95 transition-opacity" />
+              <img src={images[0].url} alt={images[0].caption ?? translation?.title ?? ''} className="w-full max-h-80 object-cover hover:opacity-95 transition-opacity" />
               {images[0].caption && <p className="text-xs text-gray-400 text-center mt-1.5 italic">{images[0].caption}</p>}
             </div>
           ) : images.length === 2 ? (
@@ -174,7 +172,7 @@ export default function ArticlePage() {
           ) : (
             <div className="space-y-2">
               <div className="cursor-zoom-in rounded-xl overflow-hidden" onClick={() => setLightboxIndex(0)}>
-                <img src={images[0].url} alt={images[0].caption ?? translation?.title} className="w-full max-h-72 object-cover hover:opacity-95 transition-opacity" />
+                <img src={images[0].url} alt={images[0].caption ?? translation?.title ?? ''} className="w-full max-h-72 object-cover hover:opacity-95 transition-opacity" />
                 {images[0].caption && <p className="text-xs text-gray-400 text-center mt-1 italic">{images[0].caption}</p>}
               </div>
               <div className="grid grid-cols-3 gap-2">
@@ -198,25 +196,25 @@ export default function ArticlePage() {
 
           <div className="flex flex-wrap items-center gap-4 text-sm text-gray-400 mb-8 pb-4 border-b border-gray-100">
             <span>By <strong className="text-gray-600">{article.profiles?.username ?? 'Anonymous'}</strong></span>
-            <span>Updated {formatDate(article.updated_at)}</span>
-            <span>{article.view_count} views</span>
+            <span>Updated {formatDate(article.updated_at ?? article.created_at)}</span>
+            <span>{article.view_count ?? 0} views</span>
             {images.length > 0 && <span>{images.length} image{images.length > 1 ? 's' : ''}</span>}
             <button onClick={fetchRevisions} className="text-green-700 hover:underline text-xs">View history</button>
           </div>
 
           {isSong ? (
-            <SongViewer content={translation.content} title={translation.title} />
+            <SongViewer content={translation.content ?? ''} title={translation.title ?? ''} />
           ) : isPoem ? (
             <div className="max-w-xl mx-auto">
               <div className="poem-content font-display text-lg leading-[1.9rem] text-gray-800 whitespace-pre-wrap text-center"
                 dangerouslySetInnerHTML={{
-                  __html: translation.content
+                  __html: (translation.content ?? '')
                     .replace(/<p>/g, '').replace(/<\/p>/g, '\n')
                     .replace(/<br\s*\/?>/g, '\n').replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ')
                 }} />
             </div>
           ) : (
-            <div className="article-content" dangerouslySetInnerHTML={{ __html: translation.content }} />
+            <div className="article-content" dangerouslySetInnerHTML={{ __html: translation.content ?? '' }} />
           )}
         </>
       ) : (
@@ -271,7 +269,7 @@ export default function ArticlePage() {
                   <div key={rev.id} className="border border-gray-100 rounded-lg p-3 text-sm">
                     <div className="flex justify-between items-center">
                       <span className="font-medium">{(rev as any).profiles?.username ?? 'Unknown'}</span>
-                      <span className="text-gray-400 text-xs">{formatDate(rev.edited_at)}</span>
+                      <span className="text-gray-400 text-xs">{formatDate(rev.edited_at ?? rev.created_at)}</span>
                     </div>
                     <p className="text-gray-500 mt-1 line-clamp-2">{rev.title}</p>
                   </div>

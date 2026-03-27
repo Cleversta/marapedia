@@ -114,7 +114,7 @@ export default async function HomePage() {
                       <div className="h-56 overflow-hidden">
                         <img
                           src={featured.thumbnail_url}
-                          alt={featuredTranslation.title}
+                          alt={featuredTranslation.title ?? ''}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         />
                       </div>
@@ -125,11 +125,11 @@ export default async function HomePage() {
                         {featuredTranslation.title}
                       </h3>
                       <p className="text-gray-500 text-sm leading-relaxed line-clamp-3">
-                        {featuredTranslation.excerpt ?? featuredTranslation.content.replace(/<[^>]*>/g, '').substring(0, 200)}...
+                        {featuredTranslation.excerpt ?? (featuredTranslation.content ?? '').replace(/<[^>]*>/g, '').substring(0, 200)}...
                       </p>
                       <div className="mt-3 text-xs text-gray-400 flex gap-4">
                         <span>By {featured.profiles?.username ?? 'Anonymous'}</span>
-                        <span>{timeAgo(featured.updated_at)}</span>
+                        <span>{timeAgo(featured.updated_at ?? featured.created_at)}</span>
                       </div>
                     </div>
                   </div>
@@ -162,7 +162,7 @@ export default async function HomePage() {
             </div>
           </div>
 
-          {/* Right: sidebar — contribute + did you know only */}
+          {/* Right: sidebar */}
           <div className="lg:col-span-1 flex flex-col gap-5">
 
             {/* Contribute box */}
