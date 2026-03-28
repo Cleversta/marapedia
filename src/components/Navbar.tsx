@@ -50,6 +50,25 @@ export default function Navbar() {
   const isEditor = profile?.role === 'editor' || profile?.role === 'admin'
   const isAdmin = profile?.role === 'admin'
 
+  // ─── Avatar: shows photo if available, otherwise first letter ───────────────
+  function UserAvatar({ size = 7 }: { size?: number }) {
+    const cls = `w-${size} h-${size} rounded-full`
+    if (profile?.avatar_url) {
+      return (
+        <img
+          src={profile.avatar_url}
+          alt={profile.username}
+          className={`${cls} object-cover object-[center_20%]`}
+        />
+      )
+    }
+    return (
+      <div className={`${cls} bg-green-100 text-green-800 flex items-center justify-center text-xs font-semibold`}>
+        {profile?.username?.[0]?.toUpperCase() ?? 'U'}
+      </div>
+    )
+  }
+
   function RoleBadge() {
     if (!profile) return null
     if (profile.role === 'admin') return (
@@ -73,13 +92,9 @@ export default function Navbar() {
           {/* Search */}
           <form onSubmit={handleSearch} className="hidden md:flex flex-1 max-w-sm">
             <div className="relative w-full">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
+              <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
                 placeholder="Search articles..."
-                className="w-full pl-4 pr-10 py-1.5 text-sm border border-gray-300 rounded-full focus:outline-none focus:border-green-600 focus:ring-1 focus:ring-green-600"
-              />
+                className="w-full pl-4 pr-10 py-1.5 text-sm border border-gray-300 rounded-full focus:outline-none focus:border-green-600 focus:ring-1 focus:ring-green-600" />
               <button type="submit" className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-green-700">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -99,9 +114,7 @@ export default function Navbar() {
                 <div className="relative">
                   <button onClick={() => setMenuOpen(!menuOpen)}
                     className="flex items-center gap-2 text-sm px-2 py-1 rounded-md hover:bg-gray-100 transition-colors">
-                    <div className="w-7 h-7 rounded-full bg-green-100 text-green-800 flex items-center justify-center text-xs font-semibold">
-                      {profile?.username?.[0]?.toUpperCase() ?? 'U'}
-                    </div>
+                    <UserAvatar size={7} />
                     <span className="hidden md:block text-sm text-gray-700">{profile?.username}</span>
                     <span className="hidden md:block"><RoleBadge /></span>
                   </button>
@@ -110,13 +123,11 @@ export default function Navbar() {
                       <Link href="/profile" className="block px-4 py-2 hover:bg-gray-50" onClick={() => setMenuOpen(false)}>
                         My Profile
                       </Link>
-                      {/* Editor panel — editors AND admins */}
                       {isEditor && (
                         <Link href="/editor" className="block px-4 py-2 hover:bg-gray-50 text-blue-700" onClick={() => setMenuOpen(false)}>
                           ✏️ Editor Panel
                         </Link>
                       )}
-                      {/* Admin panel — admins only */}
                       {isAdmin && (
                         <Link href="/admin" className="block px-4 py-2 hover:bg-gray-50 text-purple-700" onClick={() => setMenuOpen(false)}>
                           ⚙️ Admin Panel
@@ -156,8 +167,7 @@ export default function Navbar() {
                   ? 'border-green-700 text-green-800 font-medium'
                   : 'border-transparent text-gray-500 hover:text-green-700 hover:border-green-300'
               }`}>
-              <span>{cat.icon}</span>
-              <span>{cat.label}</span>
+              <span>{cat.icon}</span><span>{cat.label}</span>
             </Link>
           ))}
         </nav>
