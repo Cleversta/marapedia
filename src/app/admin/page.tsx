@@ -118,7 +118,12 @@ export default function AdminPage() {
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                   <span>{cat.icon}</span>
                   <div className="min-w-0">
-                    <p className="font-medium text-sm truncate">{t?.title ?? 'Untitled'}</p>
+                    <Link
+                      href={`/articles/${article.slug}`}
+                      className="font-medium text-sm truncate block hover:text-green-700 hover:underline transition-colors"
+                    >
+                      {t?.title ?? 'Untitled'}
+                    </Link>
                     <p className="text-xs text-gray-400 flex items-center gap-2 flex-wrap">
                       <span>By {(article as any).profiles?.username ?? 'Unknown'}</span>
                       <span>·</span>
@@ -172,14 +177,12 @@ export default function AdminPage() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                {/* Role badge */}
                 <span className={`text-xs px-2 py-0.5 rounded-full ${
                   user.role === 'admin'  ? 'bg-purple-100 text-purple-700' :
                   user.role === 'editor' ? 'bg-blue-100 text-blue-700' :
                                            'bg-gray-100 text-gray-500'
                 }`}>{user.role}</span>
 
-                {/* Role controls — cannot change own role */}
                 {user.id !== profile?.id && (
                   <div className="flex items-center gap-1">
                     {user.role === 'member' && (

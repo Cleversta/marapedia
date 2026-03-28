@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { getCategoryInfo, getArticleTypeLabel, formatDate, LANGUAGES } from '@/lib/utils'
+import { getCategoryInfo, getArticleTypeLabel, formatDate, LANGUAGES, getPreferredTranslation } from '@/lib/utils'
 import SongViewer from '@/components/SongViewer'
 import type { Article, Language, ArticleRevision } from '@/types'
 
@@ -13,7 +13,7 @@ export default function ArticlePage() {
   const { slug } = useParams()
   const router = useRouter()
   const [article, setArticle] = useState<Article | null>(null)
-  const [currentLang, setCurrentLang] = useState<Language>('english')
+  const [currentLang, setCurrentLang] = useState<Language>('mara')
   const [user, setUser] = useState<any>(null)
   const [profile, setProfile] = useState<any>(null)
   const [revisions, setRevisions] = useState<ArticleRevision[]>([])
@@ -43,9 +43,9 @@ export default function ArticlePage() {
     setArticle(data)
     await supabase.from('articles').update({ view_count: (data.view_count ?? 0) + 1 }).eq('id', data.id)
 
-    const available = data.article_translations?.map((t: any) => t.language) ?? []
-    if (available.includes('english')) setCurrentLang('english')
-    else if (available.length > 0) setCurrentLang(available[0])
+    // ─── Set initial language: Mara → English → Myanmar → Mizo ───────────────
+    const preferred = getPreferredTranslation(data.article_translations)
+    if (preferred) setCurrentLang(preferred.language as Language)
 
     const { data: imgs } = await supabase
       .from('images').select('url, caption').eq('article_id', data.id).order('created_at', { ascending: true })
@@ -89,32 +89,23 @@ export default function ArticlePage() {
   const translation = article.article_translations?.find(t => t.language === currentLang)
   const availableLangs = article.article_translations?.map(t => t.language) ?? []
   const cat = getCategoryInfo(article.category)
-  const canEdit = user && (profile?.role === 'admin' || article.author_id === user.id)
+  const canEdit = user && (profile?.role === 'admin' || profile?.role === 'editor' || article.author_id === user.id)
   const isSong = article.category === 'songs'
   const isPoem = article.category === 'poems'
   const showImages = images.length > 0 && !isSong && !isPoem
-
   const typeLabel = getArticleTypeLabel(article.category, (article as any).article_type)
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
-
-      {/* Breadcrumb */}
       <nav className="text-sm text-gray-400 mb-6 flex items-center gap-2">
         <Link href="/" className="hover:text-green-700">Home</Link>
         <span>/</span>
         <Link href={`/category/${article.category}`} className="hover:text-green-700">{cat.label}</Link>
-        {typeLabel && (
-          <>
-            <span>/</span>
-            <span className="text-gray-500">{typeLabel}</span>
-          </>
-        )}
+        {typeLabel && (<><span>/</span><span className="text-gray-500">{typeLabel}</span></>)}
         <span>/</span>
         <span className="text-gray-600">{translation?.title ?? slug}</span>
       </nav>
 
-      {/* Category badge + type badge + edit */}
       <div className="flex items-center gap-2 mb-3 flex-wrap">
         <span className={`text-xs px-2 py-0.5 rounded-full border ${cat.color}`}>
           {cat.icon} {cat.label}
@@ -193,7 +184,6 @@ export default function ArticlePage() {
           <h1 className={`font-display font-bold mb-3 ${isSong ? 'text-2xl' : isPoem ? 'text-3xl text-center' : 'text-3xl md:text-4xl'}`}>
             {translation.title}
           </h1>
-
           <div className="flex flex-wrap items-center gap-4 text-sm text-gray-400 mb-8 pb-4 border-b border-gray-100">
             <span>By <strong className="text-gray-600">{article.profiles?.username ?? 'Anonymous'}</strong></span>
             <span>Updated {formatDate(article.updated_at ?? article.created_at)}</span>
@@ -201,7 +191,6 @@ export default function ArticlePage() {
             {images.length > 0 && <span>{images.length} image{images.length > 1 ? 's' : ''}</span>}
             <button onClick={fetchRevisions} className="text-green-700 hover:underline text-xs">View history</button>
           </div>
-
           {isSong ? (
             <SongViewer content={translation.content ?? ''} title={translation.title ?? ''} />
           ) : isPoem ? (

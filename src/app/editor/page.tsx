@@ -120,7 +120,12 @@ export default function EditorPage() {
               <div className="flex items-center gap-3 flex-1 min-w-0">
                 <span className="text-lg">{cat.icon}</span>
                 <div className="min-w-0">
-                  <p className="font-medium text-sm truncate">{t?.title ?? 'Untitled'}</p>
+                  <Link
+                    href={`/articles/${article.slug}`}
+                    className="font-medium text-sm truncate block hover:text-green-700 hover:underline transition-colors"
+                  >
+                    {t?.title ?? 'Untitled'}
+                  </Link>
                   <p className="text-xs text-gray-400 flex items-center gap-2 flex-wrap">
                     <span>By {(article as any).profiles?.username ?? 'Unknown'}</span>
                     <span>·</span>
@@ -158,10 +163,6 @@ export default function EditorPage() {
                 )}
                 <Link href={`/articles/edit/${article.slug}`}
                   className="text-xs px-2 py-1 border border-gray-200 rounded-lg hover:bg-gray-50">Edit</Link>
-                {article.status === 'published' && (
-                  <Link href={`/articles/${article.slug}`} target="_blank"
-                    className="text-xs px-2 py-1 border border-gray-200 rounded-lg hover:bg-gray-50">View ↗</Link>
-                )}
               </div>
             </div>
           )

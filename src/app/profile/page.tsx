@@ -103,7 +103,6 @@ export default function ProfilePage() {
 
   if (!profile) return <div className="text-center py-16 text-gray-400">Loading...</div>
 
-  // ─── Avatar — uses inline styles so no Tailwind dynamic class issues ─────────
   const avatarStyle: React.CSSProperties = {
     width: 64, height: 64, borderRadius: '50%',
     objectFit: 'cover', objectPosition: '50% 15%',
@@ -129,8 +128,6 @@ export default function ProfilePage() {
       <div className="bg-white border border-gray-200 rounded-xl p-6 mb-8">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-4">
-
-            {/* Avatar with hover overlay */}
             <div className="relative group" style={{ width: 64, height: 64 }}>
               {profile.avatar_url ? (
                 <img src={profile.avatar_url} alt={profile.username} style={avatarStyle} />
@@ -177,7 +174,6 @@ export default function ProfilePage() {
           </button>
         </div>
 
-        {/* Avatar action buttons */}
         <div className="mt-3 flex items-center gap-2 ml-20">
           <button type="button" onClick={() => fileInputRef.current?.click()} disabled={avatarUploading}
             className="text-xs px-2 py-1 border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600 disabled:opacity-50">
@@ -244,7 +240,12 @@ export default function ProfilePage() {
                   <div className="flex items-center gap-3 flex-1 min-w-0">
                     <span className="text-lg">{cat.icon}</span>
                     <div className="min-w-0">
-                      <p className="font-medium text-sm truncate">{t?.title ?? 'Untitled'}</p>
+                      <Link
+                        href={`/articles/${article.slug}`}
+                        className="font-medium text-sm truncate block hover:text-green-700 hover:underline transition-colors"
+                      >
+                        {t?.title ?? 'Untitled'}
+                      </Link>
                       <p className="text-xs text-gray-400">{cat.label} · {timeAgo(article.updated_at ?? article.created_at)}</p>
                     </div>
                   </div>

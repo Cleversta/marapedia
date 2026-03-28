@@ -1,7 +1,7 @@
 import { type ClassValue, clsx } from 'clsx'
 import { formatDistanceToNow, format } from 'date-fns'
 import slugify from 'slugify'
-import type { Category, Language } from '@/types'
+import type { Category, Language, ArticleTranslation } from '@/types'
 
 export function cn(...inputs: ClassValue[]) {
   return inputs.filter(Boolean).join(' ')
@@ -142,4 +142,18 @@ export function stripHtml(html: string): string {
 export function makeExcerpt(content: string, length = 150): string {
   const plain = stripHtml(content)
   return plain.length > length ? plain.substring(0, length) + '...' : plain
+}
+
+// ─── Language priority: Mara → English → Myanmar → Mizo ──────────────────────
+const LANGUAGE_PRIORITY = ['mara', 'english', 'myanmar', 'mizo'] as const
+
+export function getPreferredTranslation(
+  translations: ArticleTranslation[] | null | undefined
+): ArticleTranslation | null {
+  if (!translations || translations.length === 0) return null
+  for (const lang of LANGUAGE_PRIORITY) {
+    const found = translations.find(t => t.language === lang)
+    if (found) return found
+  }
+  return translations[0]
 }
