@@ -47,9 +47,22 @@ export default function Navbar() {
     }
   }
 
+  const isEditor = profile?.role === 'editor' || profile?.role === 'admin'
+  const isAdmin = profile?.role === 'admin'
+
+  function RoleBadge() {
+    if (!profile) return null
+    if (profile.role === 'admin') return (
+      <span className="text-xs px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 font-medium">Admin</span>
+    )
+    if (profile.role === 'editor') return (
+      <span className="text-xs px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 font-medium">Editor</span>
+    )
+    return null
+  }
+
   return (
     <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
-      {/* Top bar */}
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex items-center justify-between h-14 gap-4">
           {/* Logo */}
@@ -79,30 +92,40 @@ export default function Navbar() {
           <div className="flex items-center gap-2 shrink-0">
             {user ? (
               <>
-                <Link
-                  href="/articles/create"
-                  className="hidden md:flex items-center gap-1 text-sm px-3 py-1.5 bg-green-700 text-white rounded-md hover:bg-green-800 transition-colors"
-                >
+                <Link href="/articles/create"
+                  className="hidden md:flex items-center gap-1 text-sm px-3 py-1.5 bg-green-700 text-white rounded-md hover:bg-green-800 transition-colors">
                   + Contribute
                 </Link>
                 <div className="relative">
-                  <button
-                    onClick={() => setMenuOpen(!menuOpen)}
-                    className="flex items-center gap-2 text-sm px-2 py-1 rounded-md hover:bg-gray-100 transition-colors"
-                  >
+                  <button onClick={() => setMenuOpen(!menuOpen)}
+                    className="flex items-center gap-2 text-sm px-2 py-1 rounded-md hover:bg-gray-100 transition-colors">
                     <div className="w-7 h-7 rounded-full bg-green-100 text-green-800 flex items-center justify-center text-xs font-semibold">
                       {profile?.username?.[0]?.toUpperCase() ?? 'U'}
                     </div>
                     <span className="hidden md:block text-sm text-gray-700">{profile?.username}</span>
+                    <span className="hidden md:block"><RoleBadge /></span>
                   </button>
                   {menuOpen && (
-                    <div className="absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg py-1 text-sm z-50">
-                      <Link href="/profile" className="block px-4 py-2 hover:bg-gray-50" onClick={() => setMenuOpen(false)}>My Profile</Link>
-                      {profile?.role === 'admin' && (
-                        <Link href="/admin" className="block px-4 py-2 hover:bg-gray-50" onClick={() => setMenuOpen(false)}>Admin Panel</Link>
+                    <div className="absolute right-0 mt-1 w-52 bg-white border border-gray-200 rounded-lg shadow-lg py-1 text-sm z-50">
+                      <Link href="/profile" className="block px-4 py-2 hover:bg-gray-50" onClick={() => setMenuOpen(false)}>
+                        My Profile
+                      </Link>
+                      {/* Editor panel — editors AND admins */}
+                      {isEditor && (
+                        <Link href="/editor" className="block px-4 py-2 hover:bg-gray-50 text-blue-700" onClick={() => setMenuOpen(false)}>
+                          ✏️ Editor Panel
+                        </Link>
+                      )}
+                      {/* Admin panel — admins only */}
+                      {isAdmin && (
+                        <Link href="/admin" className="block px-4 py-2 hover:bg-gray-50 text-purple-700" onClick={() => setMenuOpen(false)}>
+                          ⚙️ Admin Panel
+                        </Link>
                       )}
                       <hr className="my-1" />
-                      <button onClick={handleLogout} className="w-full text-left px-4 py-2 hover:bg-gray-50 text-red-600">Logout</button>
+                      <button onClick={handleLogout} className="w-full text-left px-4 py-2 hover:bg-gray-50 text-red-600">
+                        Logout
+                      </button>
                     </div>
                   )}
                 </div>
@@ -113,12 +136,7 @@ export default function Navbar() {
                 <Link href="/register" className="text-sm px-3 py-1.5 bg-green-700 text-white rounded-md hover:bg-green-800 transition-colors">Register</Link>
               </>
             )}
-
-            {/* Mobile menu toggle */}
-            <button
-              className="md:hidden p-1.5 rounded-md hover:bg-gray-100"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            >
+            <button className="md:hidden p-1.5 rounded-md hover:bg-gray-100" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
               <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 {mobileMenuOpen
                   ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -129,18 +147,15 @@ export default function Navbar() {
           </div>
         </div>
 
-        {/* Category nav — desktop only, single row */}
+        {/* Category nav desktop */}
         <nav className="hidden md:flex items-center gap-0.5 overflow-x-auto scrollbar-hide border-t border-gray-100">
           {CATEGORIES.map(cat => (
-            <Link
-              key={cat.value}
-              href={`/category/${cat.value}`}
+            <Link key={cat.value} href={`/category/${cat.value}`}
               className={`flex items-center gap-1.5 text-xs px-3 py-2 whitespace-nowrap transition-colors border-b-2 -mb-px ${
                 pathname === `/category/${cat.value}`
                   ? 'border-green-700 text-green-800 font-medium'
                   : 'border-transparent text-gray-500 hover:text-green-700 hover:border-green-300'
-              }`}
-            >
+              }`}>
               <span>{cat.icon}</span>
               <span>{cat.label}</span>
             </Link>
@@ -148,19 +163,14 @@ export default function Navbar() {
         </nav>
       </div>
 
-      {/* Mobile expanded menu */}
+      {/* Mobile menu */}
       {mobileMenuOpen && (
         <div className="md:hidden border-t border-gray-100 bg-white px-4 py-3">
-          {/* Mobile search */}
           <form onSubmit={handleSearch} className="mb-3">
             <div className="relative">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
+              <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
                 placeholder="Search articles..."
-                className="w-full pl-4 pr-10 py-2 text-sm border border-gray-300 rounded-full focus:outline-none focus:border-green-600"
-              />
+                className="w-full pl-4 pr-10 py-2 text-sm border border-gray-300 rounded-full focus:outline-none focus:border-green-600" />
               <button type="submit" className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -168,30 +178,31 @@ export default function Navbar() {
               </button>
             </div>
           </form>
-          {/* Mobile categories */}
           <div className="grid grid-cols-2 gap-1">
             {CATEGORIES.map(cat => (
-              <Link
-                key={cat.value}
-                href={`/category/${cat.value}`}
-                onClick={() => setMobileMenuOpen(false)}
+              <Link key={cat.value} href={`/category/${cat.value}`} onClick={() => setMobileMenuOpen(false)}
                 className={`flex items-center gap-2 text-sm px-3 py-2 rounded-lg transition-colors ${
-                  pathname === `/category/${cat.value}`
-                    ? 'bg-green-50 text-green-800 font-medium'
-                    : 'text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                <span>{cat.icon}</span>
-                <span>{cat.label}</span>
+                  pathname === `/category/${cat.value}` ? 'bg-green-50 text-green-800 font-medium' : 'text-gray-600 hover:bg-gray-50'
+                }`}>
+                <span>{cat.icon}</span><span>{cat.label}</span>
               </Link>
             ))}
           </div>
+          {isEditor && (
+            <Link href="/editor" onClick={() => setMobileMenuOpen(false)}
+              className="mt-2 flex items-center gap-2 text-sm px-3 py-2 rounded-lg text-blue-700 hover:bg-blue-50">
+              ✏️ Editor Panel
+            </Link>
+          )}
+          {isAdmin && (
+            <Link href="/admin" onClick={() => setMobileMenuOpen(false)}
+              className="flex items-center gap-2 text-sm px-3 py-2 rounded-lg text-purple-700 hover:bg-purple-50">
+              ⚙️ Admin Panel
+            </Link>
+          )}
           {user && (
-            <Link
-              href="/articles/create"
-              onClick={() => setMobileMenuOpen(false)}
-              className="mt-3 flex items-center justify-center gap-1 text-sm px-3 py-2 bg-green-700 text-white rounded-lg hover:bg-green-800"
-            >
+            <Link href="/articles/create" onClick={() => setMobileMenuOpen(false)}
+              className="mt-3 flex items-center justify-center gap-1 text-sm px-3 py-2 bg-green-700 text-white rounded-lg hover:bg-green-800">
               + Contribute
             </Link>
           )}

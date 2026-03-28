@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { timeAgo, getCategoryInfo, getArticleTypeLabel } from '@/lib/utils'
-import type { Profile, Article } from '@/types'
+import type { Profile, Article, Role } from '@/types'
 
 type Tab = 'articles' | 'users'
 
@@ -14,7 +14,7 @@ export default function AdminPage() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [articles, setArticles] = useState<Article[]>([])
   const [users, setUsers] = useState<Profile[]>([])
-  const [stats, setStats] = useState({ total: 0, published: 0, drafts: 0, users: 0 })
+  const [stats, setStats] = useState({ total: 0, published: 0, drafts: 0, editors: 0, users: 0 })
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -41,6 +41,7 @@ export default function AdminPage() {
       total: arts.length,
       published: arts.filter(a => a.status === 'published').length,
       drafts: arts.filter(a => a.status === 'draft').length,
+      editors: usrs.filter(u => u.role === 'editor').length,
       users: usrs.length,
     })
     setLoading(false)
@@ -63,7 +64,7 @@ export default function AdminPage() {
     setStats(s => ({ ...s, total: s.total - 1 }))
   }
 
-  async function setUserRole(id: string, role: 'member' | 'admin') {
+  async function setUserRole(id: string, role: Role) {
     await supabase.from('profiles').update({ role }).eq('id', id)
     setUsers(prev => prev.map(u => u.id === id ? { ...u, role } : u))
   }
@@ -73,19 +74,20 @@ export default function AdminPage() {
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="font-display text-2xl font-bold">Admin Panel</h1>
+        <h1 className="font-display text-2xl font-bold">⚙️ Admin Panel</h1>
         <span className="text-sm text-gray-400">Logged in as <strong>{profile?.username}</strong></span>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
         {[
-          { label: 'Total Articles', value: stats.total, color: 'bg-blue-50 text-blue-800' },
-          { label: 'Published', value: stats.published, color: 'bg-green-50 text-green-800' },
-          { label: 'Drafts', value: stats.drafts, color: 'bg-amber-50 text-amber-800' },
-          { label: 'Users', value: stats.users, color: 'bg-purple-50 text-purple-800' },
+          { label: 'Total Articles', value: stats.total,     color: 'bg-blue-50 text-blue-800 border-blue-200' },
+          { label: 'Published',      value: stats.published, color: 'bg-green-50 text-green-800 border-green-200' },
+          { label: 'Drafts',         value: stats.drafts,    color: 'bg-amber-50 text-amber-800 border-amber-200' },
+          { label: 'Editors',        value: stats.editors,   color: 'bg-blue-50 text-blue-800 border-blue-200' },
+          { label: 'Total Users',    value: stats.users,     color: 'bg-purple-50 text-purple-800 border-purple-200' },
         ].map(s => (
-          <div key={s.label} className={`${s.color} rounded-xl p-4 border border-current border-opacity-20`}>
+          <div key={s.label} className={`${s.color} rounded-xl p-4 border`}>
             <div className="font-display text-2xl font-bold">{s.value}</div>
             <div className="text-sm opacity-70">{s.label}</div>
           </div>
@@ -110,7 +112,6 @@ export default function AdminPage() {
           {articles.map(article => {
             const t = article.article_translations?.find(t => t.language === 'english') ?? article.article_translations?.[0]
             const cat = getCategoryInfo(article.category)
-            // ─── NEW: type label in admin list ────────────────────────────
             const typeLabel = getArticleTypeLabel(article.category, (article as any).article_type)
             return (
               <div key={article.id} className="bg-white border border-gray-200 rounded-xl px-4 py-3 flex items-center justify-between gap-4">
@@ -122,13 +123,7 @@ export default function AdminPage() {
                       <span>By {(article as any).profiles?.username ?? 'Unknown'}</span>
                       <span>·</span>
                       <span>{timeAgo(article.created_at)}</span>
-                      {/* ─── NEW: type shown inline ───────────────────── */}
-                      {typeLabel && (
-                        <>
-                          <span>·</span>
-                          <span className="text-gray-500">{typeLabel}</span>
-                        </>
-                      )}
+                      {typeLabel && <><span>·</span><span className="text-gray-500">{typeLabel}</span></>}
                       {article.featured && <span className="text-amber-600">★ Featured</span>}
                     </p>
                   </div>
@@ -138,9 +133,7 @@ export default function AdminPage() {
                     article.status === 'published' ? 'bg-green-100 text-green-700'
                     : article.status === 'draft' ? 'bg-gray-100 text-gray-500'
                     : 'bg-red-100 text-red-500'
-                  }`}>
-                    {article.status}
-                  </span>
+                  }`}>{article.status}</span>
                   {article.status !== 'published' && (
                     <button onClick={() => setArticleStatus(article.id, 'published')}
                       className="text-xs px-2 py-1 bg-green-700 text-white rounded-lg hover:bg-green-800">Publish</button>
@@ -179,13 +172,41 @@ export default function AdminPage() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <span className={`text-xs px-2 py-0.5 rounded-full ${user.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-500'}`}>
-                  {user.role}
-                </span>
+                {/* Role badge */}
+                <span className={`text-xs px-2 py-0.5 rounded-full ${
+                  user.role === 'admin'  ? 'bg-purple-100 text-purple-700' :
+                  user.role === 'editor' ? 'bg-blue-100 text-blue-700' :
+                                           'bg-gray-100 text-gray-500'
+                }`}>{user.role}</span>
+
+                {/* Role controls — cannot change own role */}
                 {user.id !== profile?.id && (
-                  user.role === 'admin'
-                    ? <button onClick={() => setUserRole(user.id, 'member')} className="text-xs px-2 py-1 border border-gray-200 rounded-lg hover:bg-gray-50">Remove admin</button>
-                    : <button onClick={() => setUserRole(user.id, 'admin')} className="text-xs px-2 py-1 border border-purple-200 text-purple-600 rounded-lg hover:bg-purple-50">Make admin</button>
+                  <div className="flex items-center gap-1">
+                    {user.role === 'member' && (
+                      <button onClick={() => setUserRole(user.id, 'editor')}
+                        className="text-xs px-2 py-1 border border-blue-200 text-blue-600 rounded-lg hover:bg-blue-50">
+                        Make Editor
+                      </button>
+                    )}
+                    {user.role === 'editor' && (
+                      <>
+                        <button onClick={() => setUserRole(user.id, 'member')}
+                          className="text-xs px-2 py-1 border border-gray-200 rounded-lg hover:bg-gray-50">
+                          Remove Editor
+                        </button>
+                        <button onClick={() => setUserRole(user.id, 'admin')}
+                          className="text-xs px-2 py-1 border border-purple-200 text-purple-600 rounded-lg hover:bg-purple-50">
+                          Make Admin
+                        </button>
+                      </>
+                    )}
+                    {user.role === 'admin' && (
+                      <button onClick={() => setUserRole(user.id, 'member')}
+                        className="text-xs px-2 py-1 border border-gray-200 rounded-lg hover:bg-gray-50">
+                        Remove Admin
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
             </div>

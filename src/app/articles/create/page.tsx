@@ -7,7 +7,7 @@ import RichEditor from '@/components/RichEditor'
 import PoemEditor from '@/components/PoemEditor'
 import SongEditor from '@/components/SongEditor'
 import ImageUpload from '@/components/ImageUpload'
-import type { Language, Category } from '@/types'
+import type { Language, Category, Role } from '@/types'
 
 interface LangContent { title: string; content: string }
 type LangMap = Record<Language, LangContent>
@@ -41,6 +41,7 @@ export default function CreateArticlePage() {
   const searchParams = useSearchParams()
 
   const [user, setUser] = useState<any>(null)
+  const [userRole, setUserRole] = useState<Role>('member')
   const [currentLang, setCurrentLang] = useState<Language>('english')
   const [category, setCategory] = useState<Category>(
     (searchParams.get('category') as Category) ?? 'history'
@@ -55,14 +56,19 @@ export default function CreateArticlePage() {
   })
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) router.push('/login')
-      else setUser(session.user)
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!session) { router.push('/login'); return }
+      setUser(session.user)
+      const { data: profile } = await supabase
+        .from('profiles').select('role').eq('id', session.user.id).single()
+      if (profile) setUserRole(profile.role as Role)
     })
   }, [])
 
-  // Reset type when category changes
   useEffect(() => { setArticleType('') }, [category])
+
+  // Only editors and admins can publish directly
+  const canPublish = userRole === 'editor' || userRole === 'admin'
 
   function updateLang(lang: Language, field: 'title' | 'content', value: string) {
     setLangs(prev => ({ ...prev, [lang]: { ...prev[lang], [field]: value } }))
@@ -77,6 +83,10 @@ export default function CreateArticlePage() {
   }
 
   async function handleSave(status: 'draft' | 'published') {
+    if (status === 'published' && !canPublish) {
+      setError('Only editors and admins can publish articles directly.')
+      return
+    }
     const filled = getFilledLangs()
     if (filled.length === 0) {
       setError('Please write at least one language version with a title and content.')
@@ -92,19 +102,10 @@ export default function CreateArticlePage() {
 
     const { data: article, error: articleError } = await supabase
       .from('articles')
-      .insert({
-        slug, category, status, author_id: user.id,
-        thumbnail_url: images[0]?.url ?? null,
-        article_type: articleType || null,
-      })
-      .select()
-      .single()
+      .insert({ slug, category, status, author_id: user.id, thumbnail_url: images[0]?.url ?? null, article_type: articleType || null })
+      .select().single()
 
-    if (articleError) {
-      setError('Failed to create article: ' + articleError.message)
-      setSaving(false)
-      return
-    }
+    if (articleError) { setError('Failed to create article: ' + articleError.message); setSaving(false); return }
 
     if (images.length > 0) {
       await supabase.from('images').insert(
@@ -139,17 +140,38 @@ export default function CreateArticlePage() {
           <h1 className="font-display text-2xl font-bold">{currentCat?.icon} New {currentCat?.label} Article</h1>
           <p className="text-sm text-gray-500 mt-0.5">{meta.hint}</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
+          {/* Members see a notice */}
+          {!canPublish && (
+            <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg hidden md:block">
+              Your article will be reviewed by an editor before publishing.
+            </p>
+          )}
           <button onClick={() => handleSave('draft')} disabled={saving}
             className="px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 disabled:opacity-50 transition-colors">
             Save Draft
           </button>
-          <button onClick={() => handleSave('published')} disabled={saving}
-            className="px-4 py-2 bg-green-700 text-white rounded-lg text-sm hover:bg-green-800 disabled:opacity-50 transition-colors">
-            {saving ? 'Publishing...' : 'Publish'}
-          </button>
+          {/* Editors/admins see Publish, members see Submit for Review */}
+          {canPublish ? (
+            <button onClick={() => handleSave('published')} disabled={saving}
+              className="px-4 py-2 bg-green-700 text-white rounded-lg text-sm hover:bg-green-800 disabled:opacity-50 transition-colors">
+              {saving ? 'Publishing...' : 'Publish'}
+            </button>
+          ) : (
+            <button onClick={() => handleSave('draft')} disabled={saving}
+              className="px-4 py-2 bg-green-700 text-white rounded-lg text-sm hover:bg-green-800 disabled:opacity-50 transition-colors">
+              {saving ? 'Submitting...' : 'Submit for Review'}
+            </button>
+          )}
         </div>
       </div>
+
+      {/* Mobile notice for members */}
+      {!canPublish && (
+        <div className="md:hidden mb-4 text-xs text-amber-600 bg-amber-50 border border-amber-200 px-3 py-2 rounded-lg">
+          Your article will be reviewed by an editor before publishing.
+        </div>
+      )}
 
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mb-5">{error}</div>
@@ -203,7 +225,6 @@ export default function CreateArticlePage() {
 
         {/* Sidebar */}
         <div className="flex flex-col gap-5">
-
           {/* Category */}
           <div className="bg-white border border-gray-200 rounded-xl p-4">
             <h3 className="text-sm font-semibold mb-3">Category</h3>
@@ -219,28 +240,23 @@ export default function CreateArticlePage() {
             </div>
           </div>
 
-          {/* ─── Article type picker ──────────────────────────────────────── */}
+          {/* Article type */}
           {typeOptions.length > 0 && (
             <div className="bg-white border border-gray-200 rounded-xl p-4">
               <h3 className="text-sm font-semibold mb-1">Type</h3>
-              <p className="text-xs text-gray-400 mb-3">
-                What kind of {currentCat?.label.toLowerCase()} is this?
-              </p>
+              <p className="text-xs text-gray-400 mb-3">What kind of {currentCat?.label.toLowerCase()} is this?</p>
               <div className="flex flex-col gap-1">
                 {typeOptions.map(t => (
                   <button key={t.value} type="button" onClick={() => setArticleType(t.value)}
                     className={`text-left text-xs px-3 py-2 rounded-lg border transition-colors ${
-                      articleType === t.value
-                        ? 'bg-green-50 border-green-300 text-green-800 font-medium'
-                        : 'border-gray-200 hover:bg-gray-50 text-gray-600'
+                      articleType === t.value ? 'bg-green-50 border-green-300 text-green-800 font-medium' : 'border-gray-200 hover:bg-gray-50 text-gray-600'
                     }`}>
                     {t.label}
                   </button>
                 ))}
               </div>
               {articleType && (
-                <button onClick={() => setArticleType('')}
-                  className="mt-2 text-xs text-gray-400 hover:text-red-400 transition-colors">
+                <button onClick={() => setArticleType('')} className="mt-2 text-xs text-gray-400 hover:text-red-400 transition-colors">
                   × Clear selection
                 </button>
               )}

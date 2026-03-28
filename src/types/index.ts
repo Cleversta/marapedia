@@ -16,6 +16,9 @@ export type Category =
 
 export type ArticleStatus = 'published' | 'draft' | 'archived'
 
+// ─── Role hierarchy: member < editor < admin ──────────────────────────────────
+export type Role = 'member' | 'editor' | 'admin'
+
 export interface ArticleTranslation {
   id: string
   article_id: string
@@ -48,9 +51,10 @@ export interface Profile {
   id: string
   username: string
   full_name?: string | null
-  role: 'admin' | 'member'
+  role: Role
   created_at: string
   avatar_url?: string | null
+  bio?: string | null
 }
 
 export interface ArticleRevision {

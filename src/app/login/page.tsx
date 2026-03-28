@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase'
 
 export default function LoginPage() {
   const router = useRouter()
-  const [email, setEmail] = useState('')
+  const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -16,9 +16,21 @@ export default function LoginPage() {
     setLoading(true)
     setError('')
 
+    const email = identifier.trim()
+
+    if (!email.includes('@')) {
+      setError('Please use your email address to sign in.')
+      setLoading(false)
+      return
+    }
+
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) {
-      setError(error.message)
+      if (error.message.includes('Invalid login credentials')) {
+        setError('Wrong email or password. Please try again.')
+      } else {
+        setError(error.message)
+      }
       setLoading(false)
     } else {
       router.push('/')
@@ -30,7 +42,9 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <div className="bg-white border border-gray-200 rounded-2xl p-8 w-full max-w-md shadow-sm">
         <div className="text-center mb-6">
-          <h1 className="font-display text-2xl font-bold">Welcome back to<br /><span className="text-green-700">Marapedia</span></h1>
+          <h1 className="font-display text-2xl font-bold">
+            Welcome back to<br /><span className="text-green-700">Marapedia</span>
+          </h1>
           <p className="text-gray-500 text-sm mt-1">Sign in to your account</p>
         </div>
 
@@ -40,17 +54,19 @@ export default function LoginPage() {
           </div>
         )}
 
-        <form onSubmit={handleLogin} className="flex flex-col gap-4">
+        {/* autoComplete="off" on form + new-password on inputs stops Chrome autocomplete */}
+        <form onSubmit={handleLogin} className="flex flex-col gap-4" autoComplete="off">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
             <input
-              type="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
+              type="text"
+              value={identifier}
+              onChange={e => setIdentifier(e.target.value)}
               required
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-green-600"
               placeholder="you@email.com"
-              autoComplete="off"
+              autoComplete="new-password"
+              name="marapedia-email"
             />
           </div>
           <div>
@@ -62,6 +78,8 @@ export default function LoginPage() {
               required
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-green-600"
               placeholder="Your password"
+              autoComplete="new-password"
+              name="marapedia-password"
             />
           </div>
           <button
