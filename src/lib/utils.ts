@@ -19,7 +19,7 @@ export function formatDate(date: string): string {
   return format(new Date(date), 'dd MMM yyyy')
 }
 
-export const CATEGORIES: { value: Category; label: string; icon: string; color: string }[] = [
+export const CATEGORIES: { value: Category; label: string; icon: string; color: string; href?: string }[] = [
   { value: 'history',  label: 'History',          icon: '📜', color: 'bg-amber-50 text-amber-800 border-amber-200' },
   { value: 'songs',    label: 'Songs & Lyrics',    icon: '🎵', color: 'bg-red-50 text-red-800 border-red-200' },
   { value: 'poems',    label: 'Poems',             icon: '✍️', color: 'bg-purple-50 text-purple-800 border-purple-200' },
@@ -30,6 +30,8 @@ export const CATEGORIES: { value: Category; label: string; icon: string; color: 
   { value: 'religion', label: 'Religion',          icon: '⛪', color: 'bg-indigo-50 text-indigo-800 border-indigo-200' },
   { value: 'language', label: 'Language',          icon: '🗣️', color: 'bg-teal-50 text-teal-800 border-teal-200' },
   { value: 'other',    label: 'Other',             icon: '📁', color: 'bg-gray-50 text-gray-800 border-gray-200' },
+  // ── Photos — links to /photos, not /category/photos ──────────────────────
+  { value: 'photos' as Category,  label: 'Photos', icon: '📷', color: 'bg-pink-50 text-pink-800 border-pink-200', href: '/photos' },
 ]
 
 // ─── Article types per category — tailored for the Mara people ───────────────
