@@ -1,9 +1,5 @@
 'use client'
 // app/category/[name]/page.tsx
-// ─── NOTE: Convert to client component so tabs can filter without a full reload.
-// Keep the data fetch as a server action or use SWR/fetch in useEffect if you
-// prefer to keep it as a server component — but for simplicity this shows the
-// full client-side approach matching the existing code style.
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
@@ -38,21 +34,16 @@ export default function CategoryPage() {
     load()
   }, [category])
 
-  // ─── Build type tabs with counts ─────────────────────────────────────────────
   const typeOptions = ARTICLE_TYPES[category] ?? []
 
-  // Count how many articles belong to each type
-  // article_type is stored directly on the article row
   const countByType: Record<string, number> = {}
   for (const art of articles) {
     const t = (art as any).article_type ?? 'other'
     countByType[t] = (countByType[t] ?? 0) + 1
   }
 
-  // Only show type tabs that have at least one article, plus an "All" tab
   const typeTabs = typeOptions.filter(t => (countByType[t.value] ?? 0) > 0)
 
-  // Filtered list for current tab
   const filtered =
     activeType === 'all'
       ? articles
@@ -91,7 +82,6 @@ export default function CategoryPage() {
       {typeTabs.length > 0 && (
         <div className="mb-6 overflow-x-auto scrollbar-hide -mx-4 px-4">
           <div className="flex gap-0 border-b border-gray-200 min-w-max">
-            {/* All tab */}
             <button
               onClick={() => setActiveType('all')}
               className={`flex items-center gap-1.5 px-4 py-2.5 text-sm whitespace-nowrap
@@ -108,7 +98,6 @@ export default function CategoryPage() {
               </span>
             </button>
 
-            {/* One tab per type that has articles */}
             {typeTabs.map(t => (
               <button
                 key={t.value}
@@ -131,94 +120,35 @@ export default function CategoryPage() {
         </div>
       )}
 
-      {/* ── Main layout ───────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-
-        {/* ── Article grid ──────────────────────────────────────────────────── */}
-        <div className="lg:col-span-3">
-          {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {[...Array(4)].map((_, i) => (
-                <div key={i} className="h-40 bg-gray-100 rounded-xl animate-pulse" />
-              ))}
-            </div>
-          ) : filtered.length === 0 ? (
-            <div className="text-center py-16 bg-gray-50 rounded-xl border border-dashed border-gray-300">
-              <p className="text-gray-400 mb-3">
-                {activeType === 'all'
-                  ? `No ${cat.label.toLowerCase()} articles yet.`
-                  : `No articles of this type yet.`}
-              </p>
-              <Link
-                href={`/articles/create?category=${category}${activeType !== 'all' ? `&type=${activeType}` : ''}`}
-                className="text-sm px-4 py-2 bg-green-700 text-white rounded-lg hover:bg-green-800"
-              >
-                Be the first to contribute
-              </Link>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {filtered.map(article => (
-                <ArticleCard key={article.id} article={article} />
-              ))}
-            </div>
-          )}
+      {/* ── Article grid ──────────────────────────────────────────────────────── */}
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="h-40 bg-gray-100 rounded-xl animate-pulse" />
+          ))}
         </div>
-
-        {/* ── Sidebar ───────────────────────────────────────────────────────── */}
-        <div className="space-y-4">
-
-          {/* Type breakdown — always visible in sidebar */}
-          {typeOptions.length > 0 && (
-            <div className="bg-white border border-gray-200 rounded-xl p-4">
-              <h3 className="text-sm font-semibold mb-3 text-gray-800">Browse by type</h3>
-              <div className="flex flex-col gap-0.5">
-                <button
-                  onClick={() => setActiveType('all')}
-                  className={`flex items-center justify-between text-sm px-2 py-1.5 rounded-lg transition-colors
-                    ${activeType === 'all' ? 'bg-green-50 text-green-800 font-medium' : 'text-gray-600 hover:bg-gray-50'}`}
-                >
-                  <span>All {cat.label}</span>
-                  <span className="text-xs text-gray-400 tabular-nums">{articles.length}</span>
-                </button>
-                {typeOptions.map(t => {
-                  const count = countByType[t.value] ?? 0
-                  return (
-                    <button
-                      key={t.value}
-                      onClick={() => count > 0 && setActiveType(t.value)}
-                      className={`flex items-center justify-between text-sm px-2 py-1.5 rounded-lg transition-colors
-                        ${count === 0 ? 'opacity-40 cursor-default' : ''}
-                        ${activeType === t.value ? 'bg-green-50 text-green-800 font-medium' : 'text-gray-600 hover:bg-gray-50'}`}
-                    >
-                      <span>{t.label}</span>
-                      <span className="text-xs text-gray-400 tabular-nums">{count}</span>
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Other categories */}
-          <div className="bg-white border border-gray-200 rounded-xl p-4">
-            <h3 className="text-sm font-semibold mb-3 text-gray-800">Other categories</h3>
-            <div className="flex flex-col gap-0.5">
-              {CATEGORIES.filter(c => c.value !== category).map(c => (
-                <Link
-                  key={c.value}
-                  href={`/category/${c.value}`}
-                  className="flex items-center gap-2 text-sm text-gray-600 hover:text-green-700 px-2 py-1.5 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  <span>{c.icon}</span>
-                  <span>{c.label}</span>
-                </Link>
-              ))}
-            </div>
-          </div>
-
+      ) : filtered.length === 0 ? (
+        <div className="text-center py-16 bg-gray-50 rounded-xl border border-dashed border-gray-300">
+          <p className="text-gray-400 mb-3">
+            {activeType === 'all'
+              ? `No ${cat.label.toLowerCase()} articles yet.`
+              : `No articles of this type yet.`}
+          </p>
+          <Link
+            href={`/articles/create?category=${category}${activeType !== 'all' ? `&type=${activeType}` : ''}`}
+            className="text-sm px-4 py-2 bg-green-700 text-white rounded-lg hover:bg-green-800"
+          >
+            Be the first to contribute
+          </Link>
         </div>
-      </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {filtered.map(article => (
+            <ArticleCard key={article.id} article={article} />
+          ))}
+        </div>
+      )}
+
     </div>
   )
 }

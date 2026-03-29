@@ -291,8 +291,10 @@ export default function MyArticlesPage() {
                   article.slug
                 const langs = article.article_translations?.map((t: any) => t.language) ?? []
                 return (
+                  // ✅ FIX: Entire card is now clickable, navigates to article view
                   <div key={article.id}
-                    className="flex items-start gap-4 bg-white border border-gray-200 rounded-xl p-4 hover:border-gray-300 hover:shadow-sm transition-all">
+                    onClick={() => router.push(`/articles/${article.slug}`)}
+                    className="flex items-start gap-4 bg-white border border-gray-200 rounded-xl p-4 hover:border-gray-300 hover:shadow-sm transition-all cursor-pointer">
                     {article.thumbnail_url ? (
                       <img src={article.thumbnail_url} alt={title} className="w-16 h-16 rounded-lg object-cover shrink-0" />
                     ) : (
@@ -311,7 +313,8 @@ export default function MyArticlesPage() {
                             </span>
                           </div>
                         </div>
-                        <div className="flex items-center gap-1.5 shrink-0">
+                        {/* ✅ FIX: stopPropagation so buttons don't trigger card navigation */}
+                        <div className="flex items-center gap-1.5 shrink-0" onClick={e => e.stopPropagation()}>
                           <Link href={`/articles/${article.slug}`}
                             className="text-xs px-2.5 py-1.5 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50">View</Link>
                           <Link href={`/articles/edit/${article.slug}`}
@@ -365,7 +368,10 @@ export default function MyArticlesPage() {
                 const images = [...(album.photo_images ?? [])].sort((a, b) => a.sort_order - b.sort_order)
                 const cover = images[0]
                 return (
-                  <div key={album.id} className="flex items-center gap-4 bg-white border border-gray-200 rounded-xl p-3 hover:border-gray-300 hover:shadow-sm transition-all">
+                  // ✅ FIX: Entire album card is now clickable, navigates to album view
+                  <div key={album.id}
+                    onClick={() => router.push(`/photos/${album.id}`)}
+                    className="flex items-center gap-4 bg-white border border-gray-200 rounded-xl p-3 hover:border-gray-300 hover:shadow-sm transition-all cursor-pointer">
                     {/* Cover */}
                     <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 shrink-0">
                       {cover
@@ -403,8 +409,8 @@ export default function MyArticlesPage() {
                       </span>
                     </div>
 
-                    {/* Actions */}
-                    <div className="flex items-center gap-2 shrink-0">
+                    {/* ✅ FIX: stopPropagation so buttons don't trigger card navigation */}
+                    <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
                       <button onClick={() => setEditingAlbum(album)}
                         className="text-xs px-2.5 py-1.5 border border-green-200 text-green-700 rounded-lg hover:bg-green-50">
                         ✏️ Edit

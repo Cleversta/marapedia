@@ -7,6 +7,7 @@ interface Section {
   type: 'verse' | 'chorus' | 'bridge' | 'intro' | 'outro' | 'pre-chorus' | 'custom'
   label: string
   content: string
+  chords: string
 }
 
 interface SongMeta {
@@ -24,28 +25,29 @@ interface Props {
   language: Language
 }
 
+// ── Section config ────────────────────────────────────────────────────────────
 const SECTION_TYPES = [
-  { type: 'verse',      label: 'Verse',      color: 'bg-blue-50 border-blue-200 text-blue-700' },
-  { type: 'chorus',     label: 'Chorus',     color: 'bg-green-50 border-green-200 text-green-700' },
-  { type: 'bridge',     label: 'Bridge',     color: 'bg-purple-50 border-purple-200 text-purple-700' },
-  { type: 'intro',      label: 'Intro',      color: 'bg-amber-50 border-amber-200 text-amber-700' },
-  { type: 'outro',      label: 'Outro',      color: 'bg-orange-50 border-orange-200 text-orange-700' },
-  { type: 'pre-chorus', label: 'Pre-Chorus', color: 'bg-teal-50 border-teal-200 text-teal-700' },
+  { type: 'verse',      label: 'Verse',      accent: '#3b82f6', bg: '#eff6ff', badge: 'bg-blue-100 text-blue-700' },
+  { type: 'chorus',     label: 'Chorus',     accent: '#16a34a', bg: '#f0fdf4', badge: 'bg-green-100 text-green-700' },
+  { type: 'bridge',     label: 'Bridge',     accent: '#9333ea', bg: '#faf5ff', badge: 'bg-purple-100 text-purple-700' },
+  { type: 'intro',      label: 'Intro',      accent: '#d97706', bg: '#fffbeb', badge: 'bg-amber-100 text-amber-700' },
+  { type: 'outro',      label: 'Outro',      accent: '#ea580c', bg: '#fff7ed', badge: 'bg-orange-100 text-orange-700' },
+  { type: 'pre-chorus', label: 'Pre-Chorus', accent: '#0d9488', bg: '#f0fdfa', badge: 'bg-teal-100 text-teal-700' },
 ] as const
 
-const MUSICAL_KEYS = ['C', 'D', 'E', 'F', 'G', 'A', 'B', 'C#', 'Db', 'Eb', 'F#', 'Gb', 'Ab', 'Bb']
+const MUSICAL_KEYS = ['C', 'C#', 'Db', 'D', 'Eb', 'E', 'F', 'F#', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B']
 const TIME_SIGNATURES = ['4/4', '3/4', '6/8', '2/4', '12/8']
 
-function getSectionStyle(type: string) {
-  return SECTION_TYPES.find(s => s.type === type)?.color ?? 'bg-gray-50 border-gray-200 text-gray-700'
+function getSectionConfig(type: string) {
+  return SECTION_TYPES.find(s => s.type === type) ?? SECTION_TYPES[0]
 }
 
 function serialize(sections: Section[], meta: SongMeta): string {
   const metaComment = `<!--meta:${JSON.stringify(meta)}-->`
   const sectionsHtml = sections
-    .filter(s => s.content.trim())
+    .filter(s => s.content.trim() || s.chords.trim())
     .map(s =>
-      `<div class="song-section" data-type="${s.type}" data-label="${s.label}"><h4>[${s.label}]</h4>${
+      `<div class="song-section" data-type="${s.type}" data-label="${s.label}" data-chords="${encodeURIComponent(s.chords)}"><h4>[${s.label}]</h4>${
         s.content.split('\n').map(l => `<p>${l || '&nbsp;'}</p>`).join('')
       }</div>`
     )
@@ -63,9 +65,10 @@ function htmlToSections(html: string): Section[] {
     return Array.from(divs).map((div, i) => {
       const type = (div.getAttribute('data-type') ?? 'verse') as Section['type']
       const label = div.getAttribute('data-label') ?? 'Verse'
+      const chords = decodeURIComponent(div.getAttribute('data-chords') ?? '')
       const paragraphs = Array.from(div.querySelectorAll('p'))
       const content = paragraphs.map(p => p.textContent === '\u00a0' ? '' : (p.textContent ?? '')).join('\n')
-      return { id: String(i), type, label, content }
+      return { id: String(i), type, label, content, chords }
     })
   } catch { return [] }
 }
@@ -88,26 +91,40 @@ function makeLabel(sections: Section[], type: string) {
 
 const LANG_PLACEHOLDERS: Record<Language, string> = {
   english: 'Write your lyrics here...',
-  mara: 'ကြိုင်ႈ ကညီႈ...',
+  mara:    '',
   myanmar: 'သီချင်းသားများ ရေးပါ...',
-  mizo: 'Hla ziak rawh...',
+  mizo:    '',
 }
 
 export default function SongEditor({ content, onChange, language }: Props) {
   const [sections, setSections] = useState<Section[]>(() => {
     const parsed = typeof window !== 'undefined' ? htmlToSections(content) : []
     return parsed.length > 0 ? parsed : [
-      { id: makeId(), type: 'verse', label: 'Verse 1', content: '' },
-      { id: makeId(), type: 'chorus', label: 'Chorus', content: '' },
+      { id: makeId(), type: 'verse',  label: 'Verse 1', content: '', chords: '' },
+      { id: makeId(), type: 'chorus', label: 'Chorus',  content: '', chords: '' },
     ]
   })
 
   const [meta, setMeta] = useState<SongMeta>(() =>
-    typeof window !== 'undefined' ? htmlToMeta(content) : { key: '', writer: '', singer: '', reference: '', timeSignature: '', songNumber: '' }
+    typeof window !== 'undefined'
+      ? htmlToMeta(content)
+      : { key: '', writer: '', singer: '', reference: '', timeSignature: '', songNumber: '' }
   )
 
   const [showAddMenu, setShowAddMenu] = useState(false)
   const [showMeta, setShowMeta] = useState(false)
+  const [showChords, setShowChords] = useState(true)
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(
+    () => new Set(sections.map(s => s.id))
+  )
+
+  function toggleSection(id: string) {
+    setExpandedSections(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
 
   function updateMeta(field: keyof SongMeta, value: string) {
     const next = { ...meta, [field]: value }
@@ -115,9 +132,9 @@ export default function SongEditor({ content, onChange, language }: Props) {
     onChange(serialize(sections, next))
   }
 
-  function updateSection(id: string, content: string) {
+  function updateSection(id: string, field: 'content' | 'chords', value: string) {
     setSections(prev => {
-      const next = prev.map(s => s.id === id ? { ...s, content } : s)
+      const next = prev.map(s => s.id === id ? { ...s, [field]: value } : s)
       onChange(serialize(next, meta))
       return next
     })
@@ -126,7 +143,9 @@ export default function SongEditor({ content, onChange, language }: Props) {
   function addSection(type: string) {
     setSections(prev => {
       const label = makeLabel(prev, type)
-      const next = [...prev, { id: makeId(), type: type as Section['type'], label, content: '' }]
+      const id = makeId()
+      const next = [...prev, { id, type: type as Section['type'], label, content: '', chords: '' }]
+      setExpandedSections(e => new Set([...Array.from(e), id]))
       onChange(serialize(next, meta))
       return next
     })
@@ -155,110 +174,285 @@ export default function SongEditor({ content, onChange, language }: Props) {
   }
 
   const placeholder = LANG_PLACEHOLDERS[language] ?? LANG_PLACEHOLDERS['english']
+  const totalLines = sections.reduce((a, s) => a + s.content.split('\n').filter(l => l.trim()).length, 0)
+  const hasChords = sections.some(s => s.chords.trim())
 
   return (
-    <div className="song-editor">
-      {/* Song metadata panel */}
-      <div className="mb-4 bg-blue-50 border border-blue-200 rounded-xl overflow-hidden">
-        <button
-          type="button"
-          onClick={() => setShowMeta(!showMeta)}
-          className="w-full flex items-center justify-between px-4 py-2.5 text-sm font-medium text-blue-800"
-        >
-          <span>🎵 Song details (key, writer, singer...)</span>
-          <span className="text-blue-400">{showMeta ? '▲' : '▼'}</span>
-        </button>
+    <div className="song-editor space-y-3">
+      <style>{`
+        .song-editor textarea { font-family: 'ui-monospace', 'SFMono-Regular', 'Menlo', monospace; }
+        .chord-row { background: repeating-linear-gradient(
+          90deg, transparent, transparent 3ch, rgba(0,0,0,0.015) 3ch, rgba(0,0,0,0.015) 6ch
+        ); }
+        .section-card { transition: box-shadow 0.15s ease; }
+        .section-card:hover { box-shadow: 0 2px 12px rgba(0,0,0,0.07); }
+        .meta-enter { animation: metaIn 0.18s ease forwards; }
+        @keyframes metaIn {
+          from { opacity: 0; transform: translateY(-4px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
 
-        {showMeta && (
-          <div className="px-4 pb-4 grid grid-cols-2 gap-3 border-t border-blue-200 pt-3">
+      {/* ── Toolbar ──────────────────────────────────────────────────────────── */}
+      <div className="flex items-center justify-between bg-white border border-gray-200 rounded-xl px-4 py-2.5 gap-3">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-semibold text-gray-700">🎵 Song Editor</span>
+          <span className="text-xs text-gray-300">|</span>
+          <span className="text-xs text-gray-400">{sections.length} sections · {totalLines} lines</span>
+        </div>
+        <div className="flex items-center gap-2">
+          {/* Chords toggle */}
+          <button
+            type="button"
+            onClick={() => setShowChords(!showChords)}
+            className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border font-medium transition-all duration-150
+              ${showChords
+                ? 'bg-amber-50 border-amber-200 text-amber-700'
+                : 'bg-white border-gray-200 text-gray-400 hover:border-gray-300'
+              }`}
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+            </svg>
+            {showChords ? 'Chords on' : 'Chords off'}
+          </button>
+
+          {/* Song details toggle */}
+          <button
+            type="button"
+            onClick={() => setShowMeta(!showMeta)}
+            className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border font-medium transition-all duration-150
+              ${showMeta
+                ? 'bg-blue-50 border-blue-200 text-blue-700'
+                : 'bg-white border-gray-200 text-gray-500 hover:border-blue-200 hover:text-blue-600'
+              }`}
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Song details
+            {(meta.key || meta.writer || meta.songNumber) && (
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-500 ml-0.5" />
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* ── Song metadata panel ───────────────────────────────────────────────── */}
+      {showMeta && (
+        <div className="meta-enter bg-white border border-blue-200 rounded-xl overflow-hidden shadow-sm">
+          <div className="px-4 py-3 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 flex items-center gap-2">
+            <span className="text-blue-600 text-sm">🎼</span>
+            <span className="text-sm font-semibold text-blue-800">Song Information</span>
+          </div>
+          <div className="p-4 grid grid-cols-2 md:grid-cols-3 gap-4">
+            {/* Song number */}
             <div>
-              <label className="block text-xs text-blue-700 mb-1">Song Number</label>
-              <input type="text" value={meta.songNumber} onChange={e => updateMeta('songNumber', e.target.value)}
+              <label className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                <span>🔢</span> Song No.
+              </label>
+              <input type="text" value={meta.songNumber}
+                onChange={e => updateMeta('songNumber', e.target.value)}
                 placeholder="e.g. 541"
-                className="w-full px-2 py-1.5 text-sm border border-blue-200 rounded-lg focus:outline-none focus:border-blue-400 bg-white" />
+                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-400/10 bg-gray-50 focus:bg-white transition-all" />
             </div>
+
+            {/* Key */}
             <div>
-              <label className="block text-xs text-blue-700 mb-1">Key (Doh is...)</label>
+              <label className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                <span>🎹</span> Key (Doh is...)
+              </label>
               <select value={meta.key} onChange={e => updateMeta('key', e.target.value)}
-                className="w-full px-2 py-1.5 text-sm border border-blue-200 rounded-lg focus:outline-none focus:border-blue-400 bg-white">
+                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-400/10 bg-gray-50 focus:bg-white transition-all">
                 <option value="">Select key</option>
                 {MUSICAL_KEYS.map(k => <option key={k} value={k}>{k}</option>)}
               </select>
             </div>
+
+            {/* Time signature */}
             <div>
-              <label className="block text-xs text-blue-700 mb-1">Time Signature</label>
+              <label className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                <span>⏱️</span> Time
+              </label>
               <select value={meta.timeSignature} onChange={e => updateMeta('timeSignature', e.target.value)}
-                className="w-full px-2 py-1.5 text-sm border border-blue-200 rounded-lg focus:outline-none focus:border-blue-400 bg-white">
+                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-400/10 bg-gray-50 focus:bg-white transition-all">
                 <option value="">Select time</option>
                 {TIME_SIGNATURES.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
+
+            {/* Writer */}
             <div>
-              <label className="block text-xs text-blue-700 mb-1">Bible Reference</label>
-              <input type="text" value={meta.reference} onChange={e => updateMeta('reference', e.target.value)}
-                placeholder="e.g. Biepihuah 7:13"
-                className="w-full px-2 py-1.5 text-sm border border-blue-200 rounded-lg focus:outline-none focus:border-blue-400 bg-white" />
-            </div>
-            <div>
-              <label className="block text-xs text-blue-700 mb-1">Written by</label>
-              <input type="text" value={meta.writer} onChange={e => updateMeta('writer', e.target.value)}
+              <label className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                <span>✍️</span> Written by
+              </label>
+              <input type="text" value={meta.writer}
+                onChange={e => updateMeta('writer', e.target.value)}
                 placeholder="Songwriter name"
-                className="w-full px-2 py-1.5 text-sm border border-blue-200 rounded-lg focus:outline-none focus:border-blue-400 bg-white" />
+                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-400/10 bg-gray-50 focus:bg-white transition-all" />
             </div>
+
+            {/* Singer */}
             <div>
-              <label className="block text-xs text-blue-700 mb-1">Sung by / Artist</label>
-              <input type="text" value={meta.singer} onChange={e => updateMeta('singer', e.target.value)}
-                placeholder="Artist or group name"
-                className="w-full px-2 py-1.5 text-sm border border-blue-200 rounded-lg focus:outline-none focus:border-blue-400 bg-white" />
+              <label className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                <span>🎤</span> Sung by
+              </label>
+              <input type="text" value={meta.singer}
+                onChange={e => updateMeta('singer', e.target.value)}
+                placeholder="Artist or group"
+                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-400/10 bg-gray-50 focus:bg-white transition-all" />
+            </div>
+
+            {/* Bible reference */}
+            <div>
+              <label className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                <span>📖</span> Reference
+              </label>
+              <input type="text" value={meta.reference}
+                onChange={e => updateMeta('reference', e.target.value)}
+                placeholder="e.g. Psalm 23:1"
+                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-400/10 bg-gray-50 focus:bg-white transition-all" />
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* Sections */}
-      <div className="flex flex-col gap-3">
+      {/* ── Sections ──────────────────────────────────────────────────────────── */}
+      <div className="flex flex-col gap-2.5">
         {sections.map((section, idx) => {
-          const style = getSectionStyle(section.type)
-          const parts = style.split(' ')
+          const cfg = getSectionConfig(section.type)
+          const isExpanded = expandedSections.has(section.id)
+
           return (
-            <div key={section.id} className={`rounded-xl border overflow-hidden ${parts[0]} ${parts[1]}`}>
-              <div className={`flex items-center justify-between px-3 py-2 border-b ${parts[1]}`}>
-                <span className={`text-xs font-semibold uppercase tracking-wider ${parts[2]}`}>
-                  {section.label}
-                </span>
-                <div className="flex items-center gap-1">
-                  <button type="button" onClick={() => moveSection(section.id, 'up')} disabled={idx === 0}
-                    className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-30">↑</button>
-                  <button type="button" onClick={() => moveSection(section.id, 'down')} disabled={idx === sections.length - 1}
-                    className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-30">↓</button>
+            <div
+              key={section.id}
+              className="section-card bg-white border border-gray-200 rounded-xl overflow-hidden"
+              style={{ borderLeft: `3px solid ${cfg.accent}` }}
+            >
+              {/* Section header */}
+              <div className="flex items-center gap-2 px-3 py-2.5 bg-gray-50/80 border-b border-gray-100">
+                {/* Expand/collapse */}
+                <button
+                  type="button"
+                  onClick={() => toggleSection(section.id)}
+                  className="flex items-center gap-2 flex-1 min-w-0 text-left group"
+                >
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${cfg.badge}`}>
+                    {section.label}
+                  </span>
+                  {section.chords.trim() && showChords && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-600 font-medium">
+                      chords
+                    </span>
+                  )}
+                  <svg
+                    className={`w-3.5 h-3.5 text-gray-400 transition-transform duration-200 ml-auto mr-1 ${isExpanded ? '' : '-rotate-90'}`}
+                    fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+
+                {/* Controls */}
+                <div className="flex items-center gap-0.5 shrink-0">
+                  <button type="button" onClick={() => moveSection(section.id, 'up')}
+                    disabled={idx === 0}
+                    className="w-6 h-6 flex items-center justify-center rounded text-gray-400 hover:text-gray-600 hover:bg-gray-200 disabled:opacity-25 transition-colors text-xs">
+                    ↑
+                  </button>
+                  <button type="button" onClick={() => moveSection(section.id, 'down')}
+                    disabled={idx === sections.length - 1}
+                    className="w-6 h-6 flex items-center justify-center rounded text-gray-400 hover:text-gray-600 hover:bg-gray-200 disabled:opacity-25 transition-colors text-xs">
+                    ↓
+                  </button>
                   <button type="button" onClick={() => removeSection(section.id)}
-                    className="p-1 text-gray-300 hover:text-red-400 ml-1">×</button>
+                    className="w-6 h-6 flex items-center justify-center rounded text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors ml-0.5">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
                 </div>
               </div>
-              <textarea
-                value={section.content}
-                onChange={e => updateSection(section.id, e.target.value)}
-                placeholder={placeholder}
-                rows={4}
-                className="w-full px-4 py-3 bg-white resize-none focus:outline-none text-sm leading-relaxed text-gray-700 placeholder-gray-300 font-mono"
-              />
+
+              {/* Section body */}
+              {isExpanded && (
+                <div>
+                  {/* Chords row */}
+                  {showChords && (
+                    <div className="border-b border-dashed border-amber-200 bg-amber-50/40">
+                      <div className="flex items-center gap-2 px-3 pt-2 pb-1">
+                        <span className="text-[10px] font-bold text-amber-600 uppercase tracking-widest">Chords</span>
+                        <div className="flex-1 h-px bg-amber-200/60" />
+                      </div>
+                      <textarea
+                        value={section.chords}
+                        onChange={e => updateSection(section.id, 'chords', e.target.value)}
+                        placeholder="Am  G  C  F  |  G  Em  Am..."
+                        rows={2}
+                        className="chord-row w-full px-3 pb-2.5 pt-0.5 bg-transparent resize-none focus:outline-none text-[13px] leading-relaxed text-amber-800 placeholder-amber-300 tracking-wide"
+                        style={{ fontFamily: "'ui-monospace', 'SFMono-Regular', monospace" }}
+                      />
+                    </div>
+                  )}
+
+                  {/* Lyrics row */}
+                  <div>
+                    <div className="flex items-center gap-2 px-3 pt-2.5 pb-1">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Lyrics</span>
+                      <div className="flex-1 h-px bg-gray-100" />
+                    </div>
+                    <textarea
+                      value={section.content}
+                      onChange={e => updateSection(section.id, 'content', e.target.value)}
+                      placeholder={placeholder}
+                      rows={5}
+                      className="w-full px-3 pb-3 pt-0.5 bg-white resize-none focus:outline-none text-sm leading-[1.9] text-gray-700 placeholder-gray-300"
+                      style={{ fontFamily: "'ui-monospace', 'SFMono-Regular', monospace" }}
+                    />
+                  </div>
+
+                  {/* Line count */}
+                  <div className="px-3 pb-2 flex justify-end">
+                    <span className="text-[10px] text-gray-300 tabular-nums">
+                      {section.content.split('\n').filter(l => l.trim()).length} lines
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
           )
         })}
       </div>
 
-      {/* Add section */}
-      <div className="relative mt-3">
-        <button type="button" onClick={() => setShowAddMenu(!showAddMenu)}
-          className="w-full py-2 border-2 border-dashed border-gray-200 rounded-xl text-sm text-gray-400 hover:border-green-300 hover:text-green-600 transition-colors flex items-center justify-center gap-2">
-          <span className="text-lg leading-none">+</span> Add section
+      {/* ── Add section ───────────────────────────────────────────────────────── */}
+      <div className="relative">
+        <button
+          type="button"
+          onClick={() => setShowAddMenu(!showAddMenu)}
+          className="w-full py-2.5 border-2 border-dashed border-gray-200 rounded-xl text-sm text-gray-400
+            hover:border-green-300 hover:text-green-600 hover:bg-green-50/50
+            active:scale-[0.99] transition-all duration-150 flex items-center justify-center gap-2 font-medium"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+          </svg>
+          Add section
         </button>
+
         {showAddMenu && (
-          <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg p-2 z-10">
-            <div className="grid grid-cols-3 gap-1">
+          <div className="absolute bottom-full left-0 right-0 mb-2 bg-white border border-gray-200 rounded-xl shadow-xl shadow-gray-200/80 p-3 z-20">
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2.5 px-1">Choose section type</p>
+            <div className="flex flex-wrap gap-2">
               {SECTION_TYPES.map(s => (
-                <button key={s.type} type="button" onClick={() => addSection(s.type)}
-                  className={`text-xs px-3 py-2 rounded-lg border font-medium transition-colors ${s.color}`}>
+                <button
+                  key={s.type}
+                  type="button"
+                  onClick={() => addSection(s.type)}
+                  className={`text-xs px-3.5 py-2 rounded-full border font-semibold transition-all duration-150 hover:shadow-sm active:scale-95 ${s.badge} border-current/20`}
+                  style={{ borderColor: `${s.accent}33` }}
+                >
                   {s.label}
                 </button>
               ))}
@@ -267,9 +461,28 @@ export default function SongEditor({ content, onChange, language }: Props) {
         )}
       </div>
 
-      <div className="mt-3 flex gap-4 text-xs text-gray-400">
-        <span>{sections.length} sections</span>
-        <span>{sections.reduce((a, s) => a + s.content.split('\n').filter(l => l.trim()).length, 0)} lines</span>
+      {/* ── Footer stats ─────────────────────────────────────────────────────── */}
+      <div className="flex items-center justify-between px-1 text-[11px] text-gray-400">
+        <div className="flex items-center gap-3">
+          <span>{sections.length} section{sections.length !== 1 ? 's' : ''}</span>
+          <span>·</span>
+          <span>{totalLines} lines</span>
+          {meta.key && (
+            <>
+              <span>·</span>
+              <span className="text-amber-600 font-semibold">Key of {meta.key}</span>
+            </>
+          )}
+          {meta.timeSignature && (
+            <>
+              <span>·</span>
+              <span>{meta.timeSignature}</span>
+            </>
+          )}
+        </div>
+        {hasChords && (
+          <span className="text-amber-500">♪ chords added</span>
+        )}
       </div>
     </div>
   )

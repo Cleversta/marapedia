@@ -133,7 +133,6 @@ export default function MyArticlesPage() {
         <div className="flex flex-col gap-3">
           {filtered.map(article => {
             const cat = getCategoryInfo(article.category)
-            // Get the best available title (mara → en → first available)
             const title =
               article.article_translations?.find((t: any) => t.language === 'mara')?.title ||
               article.article_translations?.find((t: any) => t.language === 'en')?.title ||
@@ -143,10 +142,12 @@ export default function MyArticlesPage() {
             const langs = article.article_translations?.map((t: any) => t.language) ?? []
 
             return (
+              // ✅ FIX: Entire card navigates to article on tap
               <div
                 key={article.id}
+                onClick={() => router.push(`/articles/${article.slug}`)}
                 className="flex items-start gap-4 bg-white border border-gray-200 rounded-xl p-4
-                  hover:border-gray-300 hover:shadow-sm transition-all duration-150"
+                  hover:border-gray-300 hover:shadow-sm transition-all duration-150 cursor-pointer"
               >
                 {/* Thumbnail */}
                 {article.thumbnail_url ? (
@@ -182,8 +183,11 @@ export default function MyArticlesPage() {
                       </div>
                     </div>
 
-                    {/* Actions */}
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                    {/* ✅ FIX: stopPropagation so buttons don't also trigger card navigation */}
+                    <div
+                      className="flex items-center gap-1.5 flex-shrink-0"
+                      onClick={e => e.stopPropagation()}
+                    >
                       <Link
                         href={`/articles/${article.slug}`}
                         className="text-xs px-2.5 py-1.5 border border-gray-200 rounded-lg

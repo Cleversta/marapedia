@@ -41,13 +41,10 @@ function AlbumEditModal({ album, onClose, onSave }: {
   async function handleSave() {
     if (!title.trim()) return
     setSaving(true)
-    // Update title
     await supabase.from('photo_groups').update({ title: title.trim() }).eq('id', album.id)
-    // Delete removed images
     if (removedIds.length > 0) {
       await supabase.from('photo_images').delete().in('id', removedIds)
     }
-    // Update thumbnail if cover was removed
     if (images.length > 0) {
       const sorted = [...images].sort((a, b) => a.sort_order - b.sort_order)
       await supabase.from('photo_groups').update({ thumbnail_url: sorted[0].url }).eq('id', album.id)
@@ -70,19 +67,13 @@ function AlbumEditModal({ album, onClose, onSave }: {
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-          {/* Title */}
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">Album Title</label>
             <input
-              type="text"
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-              maxLength={200}
+              type="text" value={title} onChange={e => setTitle(e.target.value)} maxLength={200}
               className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-green-500"
             />
           </div>
-
-          {/* Photos grid */}
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-2">
               Photos ({images.length}) — hover to remove
@@ -100,17 +91,12 @@ function AlbumEditModal({ album, onClose, onSave }: {
                           Cover
                         </span>
                       )}
-                      <button
-                        type="button"
-                        onClick={() => removeImage(img.id)}
-                        className="absolute inset-0 bg-red-500/70 text-white opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-xs font-medium"
-                      >
+                      <button type="button" onClick={() => removeImage(img.id)}
+                        className="absolute inset-0 bg-red-500/70 text-white opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-xs font-medium">
                         Remove
                       </button>
                     </div>
-                    {img.caption && (
-                      <p className="px-1.5 py-1 text-[9px] text-gray-500 truncate">{img.caption}</p>
-                    )}
+                    {img.caption && <p className="px-1.5 py-1 text-[9px] text-gray-500 truncate">{img.caption}</p>}
                   </div>
                 ))}
               </div>
@@ -119,15 +105,9 @@ function AlbumEditModal({ album, onClose, onSave }: {
         </div>
 
         <div className="px-5 py-3 border-t border-gray-100 shrink-0 flex justify-end gap-2 bg-gray-50/60">
-          <button onClick={onClose} className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700 transition-colors">
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={!title.trim() || saving}
-            className="px-5 py-2 bg-green-700 text-white rounded-xl text-sm font-medium
-              hover:bg-green-800 disabled:opacity-40 active:scale-95 transition-all"
-          >
+          <button onClick={onClose} className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700 transition-colors">Cancel</button>
+          <button onClick={handleSave} disabled={!title.trim() || saving}
+            className="px-5 py-2 bg-green-700 text-white rounded-xl text-sm font-medium hover:bg-green-800 disabled:opacity-40 active:scale-95 transition-all">
             {saving ? 'Saving…' : 'Save Changes'}
           </button>
         </div>
@@ -355,10 +335,10 @@ export default function ProfilePage() {
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
         {[
-          { label: 'Articles',      value: articles.length,                                       color: 'text-gray-800' },
-          { label: 'Published',     value: articles.filter(a => a.status === 'published').length, color: 'text-green-700' },
-          { label: 'Photo Albums',  value: albums.length,                                         color: 'text-pink-600' },
-          { label: 'Total Photos',  value: totalPhotos,                                           color: 'text-blue-600' },
+          { label: 'Articles',     value: articles.length,                                       color: 'text-gray-800' },
+          { label: 'Published',    value: articles.filter(a => a.status === 'published').length, color: 'text-green-700' },
+          { label: 'Photo Albums', value: albums.length,                                         color: 'text-pink-600' },
+          { label: 'Total Photos', value: totalPhotos,                                           color: 'text-blue-600' },
         ].map(s => (
           <div key={s.label} className="bg-gray-50 rounded-xl p-4 border border-gray-100">
             <p className="text-xs text-gray-400 mb-1">{s.label}</p>
@@ -401,21 +381,24 @@ export default function ProfilePage() {
           ) : (
             <div className="flex flex-col gap-2">
               {articles.map(article => {
-                const t = article.article_translations?.find(t => t.language === 'english') ?? article.article_translations?.[0]
+                const t = article.article_translations?.find((t: any) => t.language === 'english') ?? article.article_translations?.[0]
                 const cat = getCategoryInfo(article.category)
                 return (
-                  <div key={article.id} className="bg-white border border-gray-200 rounded-xl px-4 py-3 flex items-center justify-between gap-4">
+                  // ✅ FIX: Entire row is clickable
+                  <div key={article.id}
+                    onClick={() => router.push(`/articles/${article.slug}`)}
+                    className="bg-white border border-gray-200 rounded-xl px-4 py-3 flex items-center justify-between gap-4 cursor-pointer hover:border-gray-300 hover:shadow-sm transition-all">
                     <div className="flex items-center gap-3 flex-1 min-w-0">
                       <span className="text-lg">{cat.icon}</span>
                       <div className="min-w-0">
-                        <Link href={`/articles/${article.slug}`}
-                          className="font-medium text-sm truncate block hover:text-green-700 hover:underline transition-colors">
+                        <p className="font-medium text-sm truncate text-gray-900">
                           {t?.title ?? 'Untitled'}
-                        </Link>
+                        </p>
                         <p className="text-xs text-gray-400">{cat.label} · {timeAgo(article.updated_at ?? article.created_at)}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
+                    {/* ✅ FIX: stopPropagation on buttons */}
+                    <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
                       <span className={`text-xs px-2 py-0.5 rounded-full ${
                         article.status === 'published' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
                       }`}>{article.status}</span>
@@ -454,7 +437,10 @@ export default function ProfilePage() {
                 const images = [...(album.photo_images ?? [])].sort((a, b) => a.sort_order - b.sort_order)
                 const cover = images[0]
                 return (
-                  <div key={album.id} className="bg-white border border-gray-200 rounded-xl p-3 flex items-center gap-4">
+                  // ✅ FIX: Entire album card is clickable
+                  <div key={album.id}
+                    onClick={() => router.push(`/photos/${album.id}`)}
+                    className="bg-white border border-gray-200 rounded-xl p-3 flex items-center gap-4 cursor-pointer hover:border-gray-300 hover:shadow-sm transition-all">
                     {/* Cover thumbnail */}
                     <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 shrink-0">
                       {cover
@@ -492,18 +478,14 @@ export default function ProfilePage() {
                       </span>
                     </div>
 
-                    {/* Actions */}
-                    <div className="flex items-center gap-2 shrink-0">
-                      <button
-                        onClick={() => setEditingAlbum(album)}
-                        className="text-xs px-2 py-1 border border-gray-200 rounded-lg hover:bg-gray-50"
-                      >
+                    {/* ✅ FIX: stopPropagation on buttons */}
+                    <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
+                      <button onClick={() => setEditingAlbum(album)}
+                        className="text-xs px-2 py-1 border border-gray-200 rounded-lg hover:bg-gray-50">
                         ✏️ Edit
                       </button>
-                      <button
-                        onClick={() => handleDeleteAlbum(album.id)}
-                        className="text-xs px-2 py-1 border border-red-200 text-red-500 rounded-lg hover:bg-red-50"
-                      >
+                      <button onClick={() => handleDeleteAlbum(album.id)}
+                        className="text-xs px-2 py-1 border border-red-200 text-red-500 rounded-lg hover:bg-red-50">
                         Delete
                       </button>
                     </div>

@@ -21,7 +21,7 @@ export function formatDate(date: string): string {
 
 export const CATEGORIES: { value: Category; label: string; icon: string; color: string; href?: string }[] = [
   { value: 'history',  label: 'History',          icon: '📜', color: 'bg-amber-50 text-amber-800 border-amber-200' },
-  { value: 'songs',    label: 'Songs & Lyrics',    icon: '🎵', color: 'bg-red-50 text-red-800 border-red-200' },
+  { value: 'songs',    label: 'Songs\'s Lyrics',    icon: '🎵', color: 'bg-red-50 text-red-800 border-red-200' },
   { value: 'poems',    label: 'Poems',             icon: '✍️', color: 'bg-purple-50 text-purple-800 border-purple-200' },
   { value: 'stories',  label: 'Stories',           icon: '📖', color: 'bg-blue-50 text-blue-800 border-blue-200' },
   { value: 'people',   label: 'Famous People',     icon: '👤', color: 'bg-sky-50 text-sky-800 border-sky-200' },
@@ -29,9 +29,8 @@ export const CATEGORIES: { value: Category; label: string; icon: string; color: 
   { value: 'culture',  label: 'Culture',           icon: '🎭', color: 'bg-orange-50 text-orange-800 border-orange-200' },
   { value: 'religion', label: 'Religion',          icon: '⛪', color: 'bg-indigo-50 text-indigo-800 border-indigo-200' },
   { value: 'language', label: 'Language',          icon: '🗣️', color: 'bg-teal-50 text-teal-800 border-teal-200' },
-  { value: 'other',    label: 'Other',             icon: '📁', color: 'bg-gray-50 text-gray-800 border-gray-200' },
-  // ── Photos — links to /photos, not /category/photos ──────────────────────
   { value: 'photos' as Category,  label: 'Photos', icon: '📷', color: 'bg-pink-50 text-pink-800 border-pink-200', href: '/photos' },
+  { value: 'other',    label: 'Other',             icon: '📁', color: 'bg-gray-50 text-gray-800 border-gray-200' },
 ]
 
 // ─── Article types per category — tailored for the Mara people ───────────────
