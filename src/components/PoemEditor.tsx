@@ -1,11 +1,12 @@
 'use client'
-import { useRef, useState } from 'react'
-import { supabase } from '@/lib/supabase'
+import { useRef } from 'react'
+import type { Language } from '@/types'
 
 interface Props {
   content: string
   onChange: (html: string) => void
   thumbnailUrl?: string
+  language?: Language
   onThumbnailChange?: (url: string) => void
 }
 
@@ -31,12 +32,8 @@ function textToHtml(text: string): string {
     .join('\n')
 }
 
-export default function PoemEditor({ content, onChange, thumbnailUrl, onThumbnailChange }: Props) {
+export default function PoemEditor({ content, onChange }: Props) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const [uploading, setUploading] = useState(false)
-  const [uploadError, setUploadError] = useState('')
-  const [dragOver, setDragOver] = useState(false)
 
   const text = htmlToText(content)
   const lineCount = text ? text.split('\n').length : 0
@@ -50,48 +47,6 @@ export default function PoemEditor({ content, onChange, thumbnailUrl, onThumbnai
       textareaRef.current.style.height = 'auto'
       textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px'
     }
-  }
-
-  async function uploadImage(file: File) {
-    if (!file.type.startsWith('image/')) {
-      setUploadError('Please upload an image file.')
-      return
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      setUploadError('Image must be under 5MB.')
-      return
-    }
-    setUploadError('')
-    setUploading(true)
-    try {
-      const ext = file.name.split('.').pop()
-      const path = `poems/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-      const { error } = await supabase.storage.from('article-images').upload(path, file)
-      if (error) throw error
-      const { data: { publicUrl } } = supabase.storage.from('article-images').getPublicUrl(path)
-      onThumbnailChange?.(publicUrl)
-    } catch (e: any) {
-      setUploadError(e.message ?? 'Upload failed.')
-    } finally {
-      setUploading(false)
-    }
-  }
-
-  function handleFileInput(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (file) uploadImage(file)
-  }
-
-  function handleDrop(e: React.DragEvent) {
-    e.preventDefault()
-    setDragOver(false)
-    const file = e.dataTransfer.files?.[0]
-    if (file) uploadImage(file)
-  }
-
-  function handleRemoveImage() {
-    onThumbnailChange?.('')
-    if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
   return (
@@ -127,105 +82,6 @@ export default function PoemEditor({ content, onChange, thumbnailUrl, onThumbnai
         </div>
       </div>
 
-      {/* ── Cover image ──────────────────────────────────────────────────────── */}
-      <div className="rounded-xl border border-rose-100 overflow-hidden bg-white shadow-sm">
-        <div className="px-4 py-2.5 border-b border-rose-100 flex items-center gap-2 bg-rose-50/40">
-          <span className="text-sm">🖼️</span>
-          <span className="text-sm font-semibold text-gray-600">Cover Image</span>
-          <span className="text-[11px] text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full ml-auto">Optional</span>
-        </div>
-
-        <div className="p-4">
-          {thumbnailUrl ? (
-            /* Preview */
-            <div className="relative group rounded-xl overflow-hidden border border-gray-200">
-              <img
-                src={thumbnailUrl}
-                alt="Cover"
-                className="w-full h-52 object-cover"
-              />
-              {/* Overlay controls */}
-              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all duration-200 flex items-center justify-center gap-3 opacity-0 group-hover:opacity-100">
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="flex items-center gap-1.5 text-xs px-3 py-2 bg-white text-gray-800 rounded-lg font-medium hover:bg-gray-100 transition-colors shadow-sm"
-                >
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                  Replace
-                </button>
-                <button
-                  type="button"
-                  onClick={handleRemoveImage}
-                  className="flex items-center gap-1.5 text-xs px-3 py-2 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600 transition-colors shadow-sm"
-                >
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                  Remove
-                </button>
-              </div>
-            </div>
-          ) : (
-            /* Drop zone */
-            <div
-              onDragOver={e => { e.preventDefault(); setDragOver(true) }}
-              onDragLeave={() => setDragOver(false)}
-              onDrop={handleDrop}
-              onClick={() => fileInputRef.current?.click()}
-              className={`relative flex flex-col items-center justify-center gap-3 h-44 rounded-xl border-2 border-dashed cursor-pointer transition-all duration-150
-                ${dragOver
-                  ? 'border-rose-400 bg-rose-50'
-                  : 'border-rose-200 bg-rose-50/30 hover:border-rose-300 hover:bg-rose-50/60'
-                }`}
-            >
-              {uploading ? (
-                <>
-                  <div className="w-8 h-8 rounded-full border-2 border-rose-300 border-t-rose-500 animate-spin" />
-                  <p className="text-sm text-rose-500 font-medium">Uploading...</p>
-                </>
-              ) : (
-                <>
-                  <div className="w-12 h-12 rounded-full bg-rose-100 flex items-center justify-center">
-                    <svg className="w-6 h-6 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-sm font-medium text-gray-600">
-                      Drop image here, or <span className="text-rose-500">browse</span>
-                    </p>
-                    <p className="text-xs text-gray-400 mt-0.5">PNG, JPG, WEBP · Max 5MB</p>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-
-          {uploadError && (
-            <p className="mt-2 text-xs text-red-500 flex items-center gap-1.5">
-              <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              {uploadError}
-            </p>
-          )}
-
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            onChange={handleFileInput}
-            className="hidden"
-          />
-        </div>
-      </div>
-
       {/* ── Main writing area ─────────────────────────────────────────────────── */}
       <div
         className="relative rounded-xl overflow-hidden border border-rose-100 shadow-sm"
@@ -249,7 +105,6 @@ export default function PoemEditor({ content, onChange, thumbnailUrl, onThumbnai
 
           {/* Textarea */}
           <div className="flex-1 relative">
-            {/* Ruled lines */}
             <div className="absolute inset-0 pointer-events-none" style={{
               backgroundImage: 'repeating-linear-gradient(transparent, transparent calc(1.9rem - 1px), #f3e8e8 calc(1.9rem - 1px), #f3e8e8 1.9rem)',
               backgroundPositionY: '28px',

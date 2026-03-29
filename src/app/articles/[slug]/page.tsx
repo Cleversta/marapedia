@@ -1,441 +1,391 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
-import { getCategoryInfo, formatDate, timeAgo } from '@/lib/utils'
-import type { Article } from '@/types'
+import { getCategoryInfo, formatDate, timeAgo, getArticleTypeLabel } from '@/lib/utils'
+import type { Category } from '@/types'
 
-interface PhotoImage {
+interface Translation {
   id: string
+  language: string
+  title: string | null
+  content: string | null
+  excerpt: string | null
+}
+
+interface ArticleImage {
   url: string
   caption: string | null
-  sort_order: number
 }
 
-interface PhotoGroup {
+interface Article {
   id: string
-  title: string
-  is_public: boolean
-  created_at: string
+  slug: string
+  category: Category
+  article_type?: string | null
+  status: string
   thumbnail_url: string | null
-  photo_images?: PhotoImage[]
+  images?: ArticleImage[]
+  view_count: number
+  created_at: string
+  updated_at: string
+  author_id: string
+  profiles?: { username: string; avatar_url: string | null }
+  article_translations?: Translation[]
 }
 
-// ─── Album Edit Modal ─────────────────────────────────────────────────────────
-function AlbumEditModal({ album, onClose, onSave }: {
-  album: PhotoGroup
-  onClose: () => void
-  onSave: (id: string, title: string, removedImageIds: string[]) => void
-}) {
-  const [title, setTitle] = useState(album.title)
-  const [images, setImages] = useState<PhotoImage[]>(
-    [...(album.photo_images ?? [])].sort((a, b) => a.sort_order - b.sort_order)
+const LANG_LABELS: Record<string, string> = {
+  mara: 'Mara',
+  english: 'English',
+  myanmar: 'မြန်မာ',
+  mizo: 'Mizo',
+  en: 'English',
+}
+
+export default function ArticleDetailPage() {
+  const { slug } = useParams<{ slug: string }>()
+  const router = useRouter()
+  const [article, setArticle] = useState<Article | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [currentLang, setCurrentLang] = useState('mara')
+  const [user, setUser] = useState<any>(null)
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null)
+    })
+  }, [])
+
+  useEffect(() => {
+    if (!slug) return
+    fetchArticle()
+  }, [slug])
+
+  useEffect(() => {
+    if (lightboxIndex === null) return
+    const total = allImagesForLightbox().length
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setLightboxIndex(null)
+      if (e.key === 'ArrowRight') setLightboxIndex(i => i !== null ? Math.min(i + 1, total - 1) : null)
+      if (e.key === 'ArrowLeft') setLightboxIndex(i => i !== null ? Math.max(i - 1, 0) : null)
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [lightboxIndex, article])
+
+  function allImagesForLightbox(): ArticleImage[] {
+    if (!article) return []
+    return [
+      ...(article.thumbnail_url ? [{ url: article.thumbnail_url, caption: null }] : []),
+      ...(article.images ?? []).slice(1),
+    ]
+  }
+
+  async function fetchArticle() {
+    setLoading(true)
+    const { data, error } = await supabase
+      .from('articles')
+      .select('*, profiles(username, avatar_url), article_translations(*), images(*)')
+      .eq('slug', slug)
+      .single()
+
+    if (error || !data) { setLoading(false); return }
+
+    setArticle(data)
+    const langs = data.article_translations?.map((t: Translation) => t.language) ?? []
+    if (langs.includes('mara')) setCurrentLang('mara')
+    else if (langs.includes('english')) setCurrentLang('english')
+    else if (langs.includes('en')) setCurrentLang('en')
+    else if (langs.length > 0) setCurrentLang(langs[0])
+
+    await supabase.from('articles').update({ view_count: (data.view_count ?? 0) + 1 }).eq('id', data.id)
+    setLoading(false)
+  }
+
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center bg-stone-50">
+      <div className="flex flex-col items-center gap-3">
+        <div className="w-7 h-7 rounded-full border-2 border-stone-200 border-t-green-600 animate-spin" />
+        <p className="text-xs text-stone-400 tracking-widest uppercase">Loading</p>
+      </div>
+    </div>
   )
-  const [saving, setSaving] = useState(false)
-  const [removedIds, setRemovedIds] = useState<string[]>([])
 
-  function removeImage(id: string) {
-    setImages(prev => prev.filter(img => img.id !== id))
-    setRemovedIds(prev => [...prev, id])
-  }
+  if (!article) return (
+    <div className="min-h-screen flex items-center justify-center bg-stone-50">
+      <div className="text-center">
+        <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-stone-100 flex items-center justify-center text-xl">📄</div>
+        <h2 className="text-base font-semibold text-stone-800 mb-1">Article not found</h2>
+        <p className="text-sm text-stone-400 mb-5">This article may have been removed.</p>
+        <Link href="/" className="inline-flex items-center gap-2 px-4 py-2 bg-green-700 text-white rounded-lg text-sm font-medium hover:bg-green-800 transition-colors">
+          ← Marapedia
+        </Link>
+      </div>
+    </div>
+  )
 
-  async function handleSave() {
-    if (!title.trim()) return
-    setSaving(true)
-    await supabase.from('photo_groups').update({ title: title.trim() }).eq('id', album.id)
-    if (removedIds.length > 0) {
-      await supabase.from('photo_images').delete().in('id', removedIds)
-    }
-    if (images.length > 0) {
-      await supabase.from('photo_groups').update({ thumbnail_url: images[0].url }).eq('id', album.id)
-    }
-    onSave(album.id, title.trim(), removedIds)
-    setSaving(false)
-    onClose()
-  }
+  const cat = getCategoryInfo(article.category)
+  const translations = article.article_translations ?? []
+  const availableLangs = translations.map(t => t.language)
+  const translation = translations.find(t => t.language === currentLang) ?? translations[0]
+  const isOwner = user?.id === article.author_id
+  const allImages = allImagesForLightbox()
+  const typeLabel = getArticleTypeLabel(article.category, article.article_type)
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-      <div className="bg-white rounded-2xl w-full max-w-md max-h-[85vh] flex flex-col overflow-hidden shadow-2xl">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
-          <h2 className="font-display text-base font-bold text-gray-900">Edit Album</h2>
-          <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap');
 
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Album Title</label>
-            <input type="text" value={title} onChange={e => setTitle(e.target.value)} maxLength={200}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-green-500" />
-          </div>
+        .article-page { font-family: 'DM Sans', sans-serif; }
+        .article-title { font-family: 'Lora', Georgia, serif; }
 
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-2">
-              Photos ({images.length}) — hover to remove
-            </label>
-            {images.length === 0 ? (
-              <p className="text-xs text-gray-400 italic">No photos remaining.</p>
-            ) : (
-              <div className="grid grid-cols-3 gap-2">
-                {images.map((img, i) => (
-                  <div key={img.id} className="relative group rounded-lg overflow-hidden border border-gray-200 bg-gray-100">
-                    <div className="h-20 relative">
-                      <img src={img.url} alt="" className="w-full h-full object-cover" />
-                      {i === 0 && (
-                        <span className="absolute top-1 left-1 bg-green-600 text-white text-[8px] font-bold px-1 py-0.5 rounded-full uppercase">
-                          Cover
-                        </span>
-                      )}
-                      <button type="button" onClick={() => removeImage(img.id)}
-                        className="absolute inset-0 bg-red-500/70 text-white opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-xs font-medium">
-                        Remove
-                      </button>
-                    </div>
-                  </div>
+        .article-body { font-family: 'Lora', Georgia, serif; }
+        .article-body p { margin-bottom: 1.5em; line-height: 1.85; color: #292524; font-size: 1.0625rem; }
+        .article-body h1, .article-body h2, .article-body h3 { font-family: 'Lora', serif; font-weight: 700; color: #111; margin: 2em 0 0.65em; line-height: 1.3; }
+        .article-body h1 { font-size: 1.6rem; }
+        .article-body h2 { font-size: 1.25rem; border-bottom: 1px solid #e7e5e4; padding-bottom: 0.4em; }
+        .article-body h3 { font-size: 1.08rem; }
+        .article-body ul, .article-body ol { padding-left: 1.5rem; margin-bottom: 1.5em; }
+        .article-body li { margin-bottom: 0.4em; line-height: 1.75; color: #292524; font-size: 1.0625rem; }
+        .article-body blockquote { border-left: 3px solid #16a34a; padding: 0.75rem 1.25rem; margin: 1.75em 0; background: #f0fdf4; border-radius: 0 8px 8px 0; color: #166534; font-style: italic; }
+        .article-body a { color: #15803d; text-decoration: underline; text-underline-offset: 3px; }
+        .article-body img { border-radius: 10px; max-width: 100%; margin: 1em auto; display: block; }
+        .article-body strong { font-weight: 600; color: #111; }
+
+        .img-thumb { cursor: zoom-in; overflow: hidden; background: #e7e5e4; position: relative; }
+        .img-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
+        .img-thumb:hover img { transform: scale(1.07); }
+
+        .lightbox-fade { animation: lbFade 0.18s ease; }
+        .lightbox-pop { animation: lbPop 0.22s cubic-bezier(0.34, 1.4, 0.64, 1); }
+        @keyframes lbFade { from { opacity: 0 } to { opacity: 1 } }
+        @keyframes lbPop { from { opacity: 0; transform: scale(0.91) } to { opacity: 1; transform: scale(1) } }
+
+        .lang-pill { position: relative; }
+        .lang-pill.active::after { content: ''; position: absolute; bottom: -1px; left: 50%; transform: translateX(-50%); width: 18px; height: 2px; background: #15803d; border-radius: 2px; }
+
+        .img-strip::-webkit-scrollbar { display: none; }
+        .img-strip { -ms-overflow-style: none; scrollbar-width: none; }
+      `}</style>
+
+      <div className="article-page min-h-screen bg-stone-50">
+
+        {/* ── Lightbox ─────────────────────────────────────────────────────── */}
+        {lightboxIndex !== null && allImages.length > 0 && (
+          <div
+            className="lightbox-fade fixed inset-0 z-50 bg-black/92 flex flex-col items-center justify-center"
+            onClick={() => setLightboxIndex(null)}
+          >
+            <div className="absolute top-0 left-0 right-0 h-14 flex items-center justify-between px-5">
+              <span className="text-white/35 text-sm tabular-nums">{lightboxIndex + 1} / {allImages.length}</span>
+              <button
+                onClick={() => setLightboxIndex(null)}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/60 hover:text-white transition-all"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {lightboxIndex > 0 && (
+              <button
+                onClick={e => { e.stopPropagation(); setLightboxIndex(i => i !== null ? i - 1 : null) }}
+                className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-all"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+            )}
+            {lightboxIndex < allImages.length - 1 && (
+              <button
+                onClick={e => { e.stopPropagation(); setLightboxIndex(i => i !== null ? i + 1 : null) }}
+                className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-all"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            )}
+
+            <div className="lightbox-pop max-w-4xl w-full px-14" onClick={e => e.stopPropagation()}>
+              <img
+                src={allImages[lightboxIndex].url}
+                alt={allImages[lightboxIndex].caption ?? ''}
+                className="max-h-[80vh] w-full object-contain rounded-xl shadow-2xl"
+              />
+              {allImages[lightboxIndex].caption && (
+                <p className="text-center text-sm text-white/45 mt-3 font-light">{allImages[lightboxIndex].caption}</p>
+              )}
+            </div>
+
+            {allImages.length > 1 && (
+              <div className="absolute bottom-5 flex items-center gap-1.5">
+                {allImages.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={e => { e.stopPropagation(); setLightboxIndex(i) }}
+                    className={`rounded-full transition-all ${i === lightboxIndex ? 'w-4 h-1.5 bg-white' : 'w-1.5 h-1.5 bg-white/25 hover:bg-white/50'}`}
+                  />
                 ))}
               </div>
             )}
           </div>
-        </div>
+        )}
 
-        <div className="px-5 py-3 border-t border-gray-100 shrink-0 flex justify-end gap-2 bg-gray-50/60">
-          <button onClick={onClose} className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700 transition-colors">Cancel</button>
-          <button onClick={handleSave} disabled={!title.trim() || saving}
-            className="px-5 py-2 bg-green-700 text-white rounded-xl text-sm font-medium hover:bg-green-800 disabled:opacity-40 active:scale-95 transition-all">
-            {saving ? 'Saving…' : 'Save Changes'}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ─── Main Page ────────────────────────────────────────────────────────────────
-export default function MyArticlesPage() {
-  const router = useRouter()
-  const [articles, setArticles] = useState<Article[]>([])
-  const [albums, setAlbums] = useState<PhotoGroup[]>([])
-  const [loading, setLoading] = useState(true)
-  const [user, setUser] = useState<any>(null)
-  const [articleFilter, setArticleFilter] = useState<'all' | 'published' | 'draft'>('all')
-  const [mainTab, setMainTab] = useState<'articles' | 'photos'>('articles')
-  const [editingAlbum, setEditingAlbum] = useState<PhotoGroup | null>(null)
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session?.user) { router.push('/login'); return }
-      setUser(session.user)
-      fetchMyArticles(session.user.id)
-      fetchMyAlbums(session.user.id)
-    })
-  }, [])
-
-  async function fetchMyArticles(userId: string) {
-    const { data } = await supabase
-      .from('articles')
-      .select('*, article_translations(*)')
-      .eq('author_id', userId)
-      .order('updated_at', { ascending: false })
-    setArticles(data ?? [])
-    setLoading(false)
-  }
-
-  async function fetchMyAlbums(userId: string) {
-    const { data } = await supabase
-      .from('photo_groups')
-      .select('*, photo_images(id, url, caption, sort_order)')
-      .eq('author_id', userId)
-      .order('created_at', { ascending: false })
-    setAlbums(data ?? [])
-  }
-
-  async function handleDeleteArticle(id: string) {
-    if (!confirm('Are you sure you want to delete this article?')) return
-    await supabase.from('articles').delete().eq('id', id)
-    setArticles(prev => prev.filter(a => a.id !== id))
-  }
-
-  async function handleDeleteAlbum(id: string) {
-    if (!confirm('Delete this album and all its photos?')) return
-    await supabase.from('photo_groups').delete().eq('id', id)
-    setAlbums(prev => prev.filter(a => a.id !== id))
-  }
-
-  function handleAlbumSaved(id: string, newTitle: string, removedImageIds: string[]) {
-    setAlbums(prev => prev.map(a => {
-      if (a.id !== id) return a
-      return {
-        ...a,
-        title: newTitle,
-        photo_images: (a.photo_images ?? []).filter(img => !removedImageIds.includes(img.id)),
-      }
-    }))
-  }
-
-  const filteredArticles = articles.filter(a => {
-    if (articleFilter === 'published') return a.status === 'published'
-    if (articleFilter === 'draft') return a.status === 'draft'
-    return true
-  })
-
-  const totalPhotos = albums.reduce((s, a) => s + (a.photo_images?.length ?? 0), 0)
-
-  const stats = {
-    total: articles.length,
-    published: articles.filter(a => a.status === 'published').length,
-    draft: articles.filter(a => a.status === 'draft').length,
-    views: articles.reduce((sum, a) => sum + (a.view_count ?? 0), 0),
-    albums: albums.length,
-    photos: totalPhotos,
-  }
-
-  if (loading) return (
-    <div className="max-w-4xl mx-auto px-4 py-16 text-center">
-      <p className="text-gray-400">Loading...</p>
-    </div>
-  )
-
-  return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
-
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold font-display text-gray-900">My Contributions</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Manage your articles and photo albums</p>
-        </div>
-        <Link href="/articles/create"
-          className="flex items-center gap-1.5 text-sm px-4 py-2 bg-green-700 text-white
-            rounded-lg hover:bg-green-800 active:scale-95 transition-all duration-150 font-medium">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-          </svg>
-          New Article
-        </Link>
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-3 md:grid-cols-6 gap-3 mb-6">
-        {[
-          { label: 'Articles',   value: stats.total,                    color: 'text-gray-800' },
-          { label: 'Published',  value: stats.published,                color: 'text-green-700' },
-          { label: 'Draft',      value: stats.draft,                    color: 'text-amber-600' },
-          { label: 'Views',      value: stats.views.toLocaleString(),   color: 'text-blue-600' },
-          { label: 'Albums',     value: stats.albums,                   color: 'text-pink-600' },
-          { label: 'Photos',     value: stats.photos,                   color: 'text-purple-600' },
-        ].map(s => (
-          <div key={s.label} className="bg-gray-50 rounded-xl p-3 border border-gray-100">
-            <p className="text-xs text-gray-400 mb-0.5">{s.label}</p>
-            <p className={`text-lg font-bold ${s.color}`}>{s.value}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Main tabs */}
-      <div className="flex gap-0 border-b border-gray-200 mb-5">
-        {([
-          { key: 'articles', label: `Articles (${stats.total})` },
-          { key: 'photos',   label: `Photo Albums (${stats.albums})` },
-        ] as { key: typeof mainTab; label: string }[]).map(t => (
-          <button key={t.key} onClick={() => setMainTab(t.key)}
-            className={`px-4 py-2 text-sm border-b-2 transition-colors ${
-              mainTab === t.key ? 'border-green-700 text-green-700 font-medium' : 'border-transparent text-gray-500 hover:text-gray-800'
-            }`}>
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Articles tab */}
-      {mainTab === 'articles' && (
-        <div>
-          {/* Article filter sub-tabs */}
-          <div className="flex gap-1 mb-4">
-            {(['all', 'published', 'draft'] as const).map(f => (
-              <button key={f} onClick={() => setArticleFilter(f)}
-                className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${
-                  articleFilter === f ? 'bg-green-700 text-white border-green-700' : 'border-gray-200 text-gray-500 hover:bg-gray-50'
-                }`}>
-                {f === 'all' ? `All (${stats.total})` : f === 'published' ? `Published (${stats.published})` : `Draft (${stats.draft})`}
-              </button>
-            ))}
-          </div>
-
-          {filteredArticles.length === 0 ? (
-            <div className="text-center py-16 bg-gray-50 rounded-xl border border-dashed border-gray-300">
-              <svg className="w-10 h-10 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        {/* ── Sticky nav ───────────────────────────────────────────────────── */}
+        <nav className="sticky top-0 z-40 bg-stone-50/80 backdrop-blur-lg border-b border-stone-200/60">
+          <div className="max-w-3xl mx-auto px-4 flex items-center justify-between gap-3" style={{ height: '50px' }}>
+            <button
+              onClick={() => router.back()}
+              className="flex items-center gap-1.5 text-sm text-stone-500 hover:text-stone-900 transition-colors group"
+            >
+              <svg className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
-              <p className="text-gray-400 text-sm mb-3">
-                {articleFilter === 'all' ? "You haven't written any articles yet." : `No ${articleFilter} articles.`}
-              </p>
-              <Link href="/articles/create"
-                className="text-sm px-4 py-2 bg-green-700 text-white rounded-lg hover:bg-green-800 transition-colors">
-                Write your first article
-              </Link>
+              Back
+            </button>
+            <div className="flex items-center gap-2">
+              <span className={`text-xs px-2.5 py-1 rounded-full border font-medium ${cat.color}`}>
+                {cat.icon} {cat.label}
+              </span>
+              {article.status !== 'published' && (
+                <span className="text-xs px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200 font-medium">Draft</span>
+              )}
+              {isOwner && (
+                <Link
+                  href={`/articles/edit/${article.slug}`}
+                  className="flex items-center gap-1 text-xs px-3 py-1.5 bg-white border border-stone-200 text-stone-500 rounded-lg hover:border-green-300 hover:text-green-700 transition-all font-medium"
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                  Edit
+                </Link>
+              )}
             </div>
-          ) : (
-            <div className="flex flex-col gap-3">
-              {filteredArticles.map(article => {
-                const cat = getCategoryInfo(article.category)
-                const title =
-                  article.article_translations?.find((t: any) => t.language === 'mara')?.title ||
-                  article.article_translations?.find((t: any) => t.language === 'en')?.title ||
-                  article.article_translations?.[0]?.title ||
-                  article.slug
-                const langs = article.article_translations?.map((t: any) => t.language) ?? []
-                return (
-                  // ✅ FIX: Entire card is now clickable, navigates to article view
-                  <div key={article.id}
-                    onClick={() => router.push(`/articles/${article.slug}`)}
-                    className="flex items-start gap-4 bg-white border border-gray-200 rounded-xl p-4 hover:border-gray-300 hover:shadow-sm transition-all cursor-pointer">
-                    {article.thumbnail_url ? (
-                      <img src={article.thumbnail_url} alt={title} className="w-16 h-16 rounded-lg object-cover shrink-0" />
-                    ) : (
-                      <div className="w-16 h-16 rounded-lg bg-gray-100 flex items-center justify-center text-2xl shrink-0">{cat.icon}</div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2 flex-wrap">
-                        <div className="min-w-0">
-                          <h2 className="text-sm font-semibold text-gray-900 truncate">{title}</h2>
-                          <div className="flex items-center gap-2 mt-1 flex-wrap">
-                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${cat.color}`}>{cat.icon} {cat.label}</span>
-                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
-                              article.status === 'published' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-amber-50 text-amber-700 border border-amber-200'
-                            }`}>
-                              {article.status === 'published' ? '● Published' : '○ Draft'}
-                            </span>
-                          </div>
-                        </div>
-                        {/* ✅ FIX: stopPropagation so buttons don't trigger card navigation */}
-                        <div className="flex items-center gap-1.5 shrink-0" onClick={e => e.stopPropagation()}>
-                          <Link href={`/articles/${article.slug}`}
-                            className="text-xs px-2.5 py-1.5 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50">View</Link>
-                          <Link href={`/articles/edit/${article.slug}`}
-                            className="text-xs px-2.5 py-1.5 border border-green-200 rounded-lg text-green-700 hover:bg-green-50">✏️ Edit</Link>
-                          <button onClick={() => handleDeleteArticle(article.id)}
-                            className="text-xs px-2.5 py-1.5 border border-red-200 rounded-lg text-red-600 hover:bg-red-50">Delete</button>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
-                        <span>Updated {formatDate(article.updated_at ?? article.created_at)}</span>
-                        <span>{article.view_count ?? 0} views</span>
-                        {langs.length > 0 && (
-                          <span className="flex items-center gap-1">
-                            {langs.map((lang: string) => (
-                              <span key={lang} className="bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded text-[10px] uppercase">{lang}</span>
-                            ))}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Photos tab */}
-      {mainTab === 'photos' && (
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <p className="text-sm text-gray-500">{albums.length} album{albums.length !== 1 ? 's' : ''} · {totalPhotos} photos</p>
-            <Link href="/photos" className="text-sm px-3 py-1.5 bg-green-700 text-white rounded-lg hover:bg-green-800">
-              + Upload Photos
-            </Link>
           </div>
+        </nav>
 
-          {albums.length === 0 ? (
-            <div className="text-center py-16 bg-gray-50 rounded-xl border border-dashed border-gray-300">
-              <div className="text-4xl mb-3">📷</div>
-              <p className="text-gray-400 text-sm mb-3">You haven't uploaded any photo albums yet.</p>
-              <Link href="/photos"
-                className="text-sm px-4 py-2 bg-green-700 text-white rounded-lg hover:bg-green-800 transition-colors">
-                Upload your first photos
-              </Link>
+        <main className="max-w-3xl mx-auto px-4 py-8 pb-20">
+
+          {/* ── Article header ───────────────────────────────────────────── */}
+          <header className="mb-8">
+
+            {/* 1. Byline */}
+            <div className="flex items-center gap-2.5 mb-3">
+              <div className="w-7 h-7 rounded-full bg-green-100 flex items-center justify-center text-[10px] font-bold text-green-800 overflow-hidden ring-1 ring-stone-200 shrink-0">
+                {article.profiles?.avatar_url
+                  ? <img src={article.profiles.avatar_url} alt="" className="w-full h-full object-cover" />
+                  : (article.profiles?.username?.[0]?.toUpperCase() ?? 'A')
+                }
+              </div>
+              <div className="flex items-center gap-1.5 flex-wrap text-xs text-stone-400">
+                <span className="font-medium text-stone-600">{article.profiles?.username ?? 'Anonymous'}</span>
+                <span className="text-stone-300">·</span>
+                <span>{formatDate(article.updated_at ?? article.created_at)}</span>
+                <span className="text-stone-300">·</span>
+                <span className="flex items-center gap-1">
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                  {(article.view_count ?? 0).toLocaleString()}
+                </span>
+              </div>
             </div>
-          ) : (
-            <div className="flex flex-col gap-3">
-              {albums.map(album => {
-                const images = [...(album.photo_images ?? [])].sort((a, b) => a.sort_order - b.sort_order)
-                const cover = images[0]
-                return (
-                  // ✅ FIX: Entire album card is now clickable, navigates to album view
-                  <div key={album.id}
-                    onClick={() => router.push(`/photos/${album.id}`)}
-                    className="flex items-center gap-4 bg-white border border-gray-200 rounded-xl p-3 hover:border-gray-300 hover:shadow-sm transition-all cursor-pointer">
-                    {/* Cover */}
-                    <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 shrink-0">
-                      {cover
-                        ? <img src={cover.url} alt="" className="w-full h-full object-cover" />
-                        : <div className="w-full h-full flex items-center justify-center text-gray-300 text-2xl">📷</div>
-                      }
-                    </div>
 
-                    {/* Strip */}
-                    {images.length > 1 && (
-                      <div className="hidden sm:flex gap-1 shrink-0">
-                        {images.slice(1, 4).map(img => (
-                          <div key={img.id} className="w-10 h-16 rounded overflow-hidden bg-gray-100">
-                            <img src={img.url} alt="" className="w-full h-full object-cover" />
-                          </div>
-                        ))}
-                        {images.length > 4 && (
-                          <div className="w-10 h-16 rounded bg-gray-100 flex items-center justify-center text-xs text-gray-400 font-medium">
-                            +{images.length - 4}
-                          </div>
-                        )}
-                      </div>
-                    )}
+            {/* 2. Title */}
+            <h1 className="article-title text-[1.8rem] md:text-[2.1rem] font-bold text-stone-900 leading-[1.2] mb-3 tracking-[-0.01em]">
+              {translation?.title ?? article.slug}
+            </h1>
 
-                    {/* Info */}
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm truncate">{album.title}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        {images.length} photo{images.length !== 1 ? 's' : ''} · {timeAgo(album.created_at)}
-                      </p>
-                      <span className={`inline-block mt-1 text-[10px] px-1.5 py-0.5 rounded-full ${
-                        album.is_public ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
-                      }`}>
-                        {album.is_public ? '● Public' : '○ Hidden'}
+            {/* 3. Article type badge */}
+            {typeLabel && (
+              <div className="mb-4">
+                <span className="inline-flex items-center text-xs px-2.5 py-1 rounded-full bg-stone-100 text-stone-500 font-medium border border-stone-200">
+                  {typeLabel}
+                </span>
+              </div>
+            )}
+
+            {/* 4. Horizontal image strip */}
+            {allImages.length > 0 && (
+              <div className="img-strip flex gap-2 overflow-x-auto pb-1 mb-5">
+                {allImages.map((img, i) => (
+                  <div
+                    key={i}
+                    className="img-thumb shrink-0 shadow-sm"
+                    style={{ width: '88px', height: '64px', borderRadius: '7px' }}
+                    onClick={() => setLightboxIndex(i)}
+                  >
+                    <img src={img.url} alt={img.caption ?? `Photo ${i + 1}`} />
+                    {i === 0 && (
+                      <span className="absolute top-1 left-1 text-[8px] bg-black/50 text-white/90 px-1.5 py-0.5 rounded-full leading-tight">
+                        Cover
                       </span>
-                    </div>
-
-                    {/* ✅ FIX: stopPropagation so buttons don't trigger card navigation */}
-                    <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
-                      <button onClick={() => setEditingAlbum(album)}
-                        className="text-xs px-2.5 py-1.5 border border-green-200 text-green-700 rounded-lg hover:bg-green-50">
-                        ✏️ Edit
-                      </button>
-                      <button onClick={() => handleDeleteAlbum(album.id)}
-                        className="text-xs px-2.5 py-1.5 border border-red-200 text-red-500 rounded-lg hover:bg-red-50">
-                        Delete
-                      </button>
-                    </div>
+                    )}
                   </div>
-                )
-              })}
+                ))}
+              </div>
+            )}
+
+            <div className="border-b border-stone-200" />
+          </header>
+
+          {/* ── Language switcher ────────────────────────────────────────── */}
+          {availableLangs.length > 1 && (
+            <div className="flex items-center gap-0 mb-7 border-b border-stone-200">
+              {availableLangs.map(lang => (
+                <button
+                  key={lang}
+                  onClick={() => setCurrentLang(lang)}
+                  className={`lang-pill px-4 py-2.5 text-sm font-medium transition-colors ${
+                    currentLang === lang
+                      ? 'active text-green-700'
+                      : 'text-stone-400 hover:text-stone-700'
+                  }`}
+                >
+                  {LANG_LABELS[lang] ?? lang}
+                </button>
+              ))}
             </div>
           )}
-        </div>
-      )}
 
-      {/* Album edit modal */}
-      {editingAlbum && (
-        <AlbumEditModal
-          album={editingAlbum}
-          onClose={() => setEditingAlbum(null)}
-          onSave={handleAlbumSaved}
-        />
-      )}
-    </div>
+          {/* ── Body content ─────────────────────────────────────────────── */}
+          {translation?.content ? (
+            <div
+              className="article-body"
+              dangerouslySetInnerHTML={{ __html: translation.content }}
+            />
+          ) : (
+            <div className="py-14 text-center border border-dashed border-stone-200 rounded-2xl">
+              <p className="text-stone-300 italic text-sm">No content in this language yet.</p>
+              {availableLangs.length > 1 && (
+                <p className="text-stone-400 text-xs mt-2">Switch language above to read.</p>
+              )}
+            </div>
+          )}
+
+          {/* ── Footer ───────────────────────────────────────────────────── */}
+          <footer className="mt-14 pt-5 border-t border-stone-200 flex items-center justify-between flex-wrap gap-3">
+            <p className="text-xs text-stone-400 flex items-center gap-1.5">
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Updated {timeAgo(article.updated_at ?? article.created_at)}
+            </p>
+            <Link href="/" className="text-xs text-green-700 hover:text-green-800 font-medium transition-colors">
+              ← Marapedia
+            </Link>
+          </footer>
+
+        </main>
+      </div>
+    </>
   )
 }

@@ -154,18 +154,25 @@ export default function Navbar() {
           {/* ── Top bar ── */}
           <div className="flex items-center h-[60px] gap-4">
 
-            {/* Logo */}
-            <Link href="/" className="shrink-0 flex items-center gap-2 group">
-              <div className="w-7 h-7 rounded-lg bg-green-700 flex items-center justify-center shadow-sm group-hover:bg-green-800 transition-colors">
-                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5}
-                    d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                </svg>
-              </div>
-              <span className="font-display text-[1.2rem] font-bold tracking-tight text-gray-900">
-                Mara<span className="text-green-700">pedia</span>
-              </span>
-            </Link>
+        <Link href="/" className="shrink-0 flex items-center gap-2.5 group">
+          <div className="relative">
+            <div className="absolute inset-0 rounded-full bg-green-100 scale-0 group-hover:scale-110 transition-transform duration-300 ease-out" />
+            <img
+              src="/MARAPEDIA.png"
+              alt="Marapedia"
+              className="relative h-11 w-11 object-contain drop-shadow-sm
+                transition-all duration-300 group-hover:scale-105 group-hover:drop-shadow-md"
+            />
+          </div>
+          <div className="flex flex-col leading-none">
+            <span className="font-display text-[1.15rem] font-bold tracking-tight text-gray-900">
+              Mara<span className="text-green-700">pedia</span>
+            </span>
+            <span className="text-[9px] text-gray-400 tracking-[0.2em] uppercase font-medium mt-0.5">
+              Since 2026
+            </span>
+          </div>
+        </Link>
 
             {/* Search — desktop */}
             <form onSubmit={handleSearch} className="hidden md:flex flex-1 max-w-md mx-auto">

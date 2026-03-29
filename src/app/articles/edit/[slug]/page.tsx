@@ -142,154 +142,204 @@ export default function EditArticlePage() {
   const typeOptions = ARTICLE_TYPES[category] ?? []
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="font-display text-2xl font-bold">{currentCat?.icon} Edit {currentCat?.label} Article</h1>
-          <p className="text-sm text-gray-500 mt-0.5">
-            {editorType === 'poem' && 'Editing poem — line-by-line view'}
-            {editorType === 'song' && 'Editing song — section-based view'}
-            {editorType === 'rich' && 'Editing article — rich text view'}
-          </p>
+    <div className="max-w-3xl mx-auto px-4 py-6">
+
+      {/* ── Header ───────────────────────────────────────────────────────────── */}
+      <div className="flex items-center justify-between mb-5">
+        <div className="flex items-center gap-2.5">
+          <button
+            onClick={() => router.back()}
+            className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <div className="flex items-center gap-2">
+            <span className="text-lg">{currentCat?.icon}</span>
+            <h1 className="font-display text-lg font-bold text-gray-900">
+              Edit {currentCat?.label} Article
+            </h1>
+          </div>
         </div>
         <div className="flex gap-2 items-center">
-          {success && <span className="text-sm text-green-700 bg-green-50 px-3 py-1.5 rounded-lg">{success}</span>}
-          <button onClick={handleSave} disabled={saving}
-            className="px-4 py-2 bg-green-700 text-white rounded-lg text-sm hover:bg-green-800 disabled:opacity-50 transition-colors">
+          {success && (
+            <span className="text-sm text-green-700 bg-green-50 px-3 py-1.5 rounded-lg">
+              {success}
+            </span>
+          )}
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="px-4 py-2 bg-green-700 text-white rounded-xl text-sm font-medium hover:bg-green-800 disabled:opacity-50 active:scale-95 transition-all"
+          >
             {saving ? 'Saving...' : 'Save changes'}
           </button>
         </div>
       </div>
 
-      {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mb-5">{error}</div>}
+      {/* Error */}
+      {error && (
+        <div className="mb-4 text-sm text-red-700 bg-red-50 border border-red-200 px-4 py-3 rounded-xl flex items-start gap-2">
+          <svg className="w-4 h-4 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          {error}
+        </div>
+      )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          {/* Language tabs */}
-          <div className="flex gap-0 border-b border-gray-200 mb-5">
-            {LANGUAGES.map(lang => (
-              <button key={lang.value} onClick={() => setCurrentLang(lang.value)}
-                className={`px-4 py-2 text-sm flex items-center gap-1.5 border-b-2 transition-colors ${
-                  currentLang === lang.value ? 'border-green-700 text-green-700 font-medium' : 'border-transparent text-gray-500 hover:text-gray-700'
-                }`}>
-                <span className={`w-1.5 h-1.5 rounded-full ${hasContent(lang.value) ? 'bg-green-500' : 'bg-gray-300'}`} />
-                {lang.label}
+      {/* ── Main card ────────────────────────────────────────────────────────── */}
+      <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
+
+        {/* ── Type selector ────────────────────────────────────────────────── */}
+        {typeOptions.length > 0 && (
+          <div className="flex items-center gap-2 flex-wrap px-5 pt-3 pb-3 border-b border-gray-100">
+            <span className="text-xs font-semibold text-gray-400 shrink-0">Type:</span>
+            {typeOptions.map(t => (
+              <button
+                key={t.value}
+                type="button"
+                onClick={() => setArticleType(prev => prev === t.value ? '' : t.value)}
+                className={`text-xs px-3 py-1 rounded-full border transition-all active:scale-95 ${
+                  articleType === t.value
+                    ? 'bg-green-700 border-green-700 text-white font-medium'
+                    : 'border-gray-200 text-gray-500 hover:border-gray-400 hover:text-gray-700'
+                }`}
+              >
+                {t.label}
               </button>
             ))}
+            {articleType && (
+              <button
+                onClick={() => setArticleType('')}
+                className="text-xs text-gray-300 hover:text-red-400 transition-colors"
+              >
+                × clear
+              </button>
+            )}
           </div>
+        )}
 
-          {/* Title */}
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Title in {LANGUAGES.find(l => l.value === currentLang)?.label}
-            </label>
-            <input type="text" value={current.title} onChange={e => updateLang(currentLang, 'title', e.target.value)}
-              placeholder={`Title in ${LANGUAGES.find(l => l.value === currentLang)?.label}...`}
-              className={`w-full border border-gray-300 rounded-lg focus:outline-none focus:border-green-600 transition-colors ${
-                editorType === 'poem' ? 'px-3 py-2.5 text-xl font-display text-center' : 'px-3 py-2.5 text-base'
-              }`} />
-          </div>
-
-          {/* Editor */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Content</label>
-            {editorType === 'rich' && <RichEditor content={current.content} onChange={val => updateLang(currentLang, 'content', val)} placeholder="Write content here..." />}
-            {editorType === 'poem' && <PoemEditor content={current.content} onChange={val => updateLang(currentLang, 'content', val)} language={currentLang} />}
-            {editorType === 'song' && <SongEditor content={current.content} onChange={val => updateLang(currentLang, 'content', val)} language={currentLang} />}
-          </div>
-
-          {/* Language completion */}
-          <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <p className="text-xs text-gray-500 mb-2 font-medium uppercase tracking-wide">Language completion</p>
-            <div className="grid grid-cols-4 gap-2">
-              {LANGUAGES.map(lang => (
-                <button key={lang.value} onClick={() => setCurrentLang(lang.value)}
-                  className={`text-center p-2 rounded-lg border text-xs transition-colors ${
-                    hasContent(lang.value) ? 'bg-green-50 border-green-200 text-green-700' : 'bg-white border-gray-200 text-gray-400 hover:border-gray-300'
-                  }`}>
-                  <div className="font-medium">{lang.label}</div>
-                  <div>{hasContent(lang.value) ? '✓ Done' : 'Empty'}</div>
-                </button>
-              ))}
+        {/* ── Image strip ──────────────────────────────────────────────────── */}
+        <div className={`px-5 py-2.5 border-b border-gray-100 ${images.length > 0 ? 'bg-gray-50/40' : ''}`}>
+          <div className="flex items-center gap-2.5">
+            {images.map((img, i) => (
+              <div key={i} className="relative flex-shrink-0">
+                <img src={img.url} alt={img.caption || `Image ${i + 1}`} className="w-10 h-10 object-cover rounded-lg border border-gray-200" />
+                {i === 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 text-[8px] bg-green-600 text-white rounded-full w-4 h-4 flex items-center justify-center font-bold leading-none">C</span>
+                )}
+              </div>
+            ))}
+            <div className="text-xs text-gray-400">
+              <ImageUpload
+                onUpload={imgs => setImages(imgs)}
+                existingImages={images}
+                label={images.length > 0 ? `${images.length} image${images.length > 1 ? 's' : ''} · manage` : 'Add images'}
+              />
             </div>
           </div>
         </div>
 
-        {/* Sidebar */}
-        <div className="flex flex-col gap-5">
+        {/* ── Language tabs ─────────────────────────────────────────────────── */}
+        <div className="flex gap-0 border-b border-gray-100 px-5">
+          {LANGUAGES.map(lang => (
+            <button
+              key={lang.value}
+              onClick={() => setCurrentLang(lang.value)}
+              className={`px-3 py-2.5 text-sm flex items-center gap-1.5 border-b-2 -mb-px transition-colors ${
+                currentLang === lang.value
+                  ? 'border-green-700 text-green-700 font-medium'
+                  : 'border-transparent text-gray-400 hover:text-gray-700'
+              }`}
+            >
+              <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${hasContent(lang.value) ? 'bg-green-500' : 'bg-gray-300'}`} />
+              {lang.label}
+              {lang.value !== 'english' && <span className="text-xs text-gray-300 hidden sm:inline">({lang.nativeLabel})</span>}
+            </button>
+          ))}
+        </div>
 
-          {/* Category */}
-          <div className="bg-white border border-gray-200 rounded-xl p-4">
-            <h3 className="text-sm font-semibold mb-1">Category</h3>
-            <p className="text-xs text-gray-400 mb-3">Changing category switches the editor style.</p>
-            <div className="grid grid-cols-2 gap-1.5">
-              {CATEGORIES.map(cat => (
-                <button key={cat.value} type="button" onClick={() => setCategory(cat.value as Category)}
-                  className={`text-left text-xs px-2 py-2 rounded-lg border transition-colors ${
-                    category === cat.value ? 'bg-green-50 border-green-300 text-green-800 font-medium' : 'border-gray-200 hover:bg-gray-50 text-gray-600'
-                  }`}>
-                  {cat.icon} {cat.label}
-                </button>
-              ))}
-            </div>
-          </div>
+        {/* ── Title ─────────────────────────────────────────────────────────── */}
+        <div className="px-5 pt-5 pb-2">
+          <input
+            type="text"
+            value={current.title}
+            onChange={e => updateLang(currentLang, 'title', e.target.value)}
+            placeholder={
+              editorType === 'poem' ? 'Poem title...'
+              : editorType === 'song' ? 'Song title...'
+              : 'Article title...'
+            }
+            className="w-full border-0 focus:outline-none bg-transparent placeholder:text-gray-300 text-2xl font-display text-center py-2"
+          />
+        </div>
 
-          {/* ─── Article type picker ──────────────────────────────────────── */}
-          {typeOptions.length > 0 && (
-            <div className="bg-white border border-gray-200 rounded-xl p-4">
-              <h3 className="text-sm font-semibold mb-1">Type</h3>
-              <p className="text-xs text-gray-400 mb-3">
-                What kind of {currentCat?.label.toLowerCase()} is this?
-              </p>
-              <div className="flex flex-col gap-1">
-                {typeOptions.map(t => (
-                  <button key={t.value} type="button" onClick={() => setArticleType(t.value)}
-                    className={`text-left text-xs px-3 py-2 rounded-lg border transition-colors ${
-                      articleType === t.value
-                        ? 'bg-green-50 border-green-300 text-green-800 font-medium'
-                        : 'border-gray-200 hover:bg-gray-50 text-gray-600'
-                    }`}>
-                    {t.label}
-                  </button>
-                ))}
-              </div>
-              {articleType && (
-                <button onClick={() => setArticleType('')}
-                  className="mt-2 text-xs text-gray-400 hover:text-red-400 transition-colors">
-                  × Clear selection
-                </button>
-              )}
-            </div>
-          )}
+        <div className="mx-5 border-b border-gray-100 mb-1" />
 
-          {/* Images */}
-          {editorType !== 'poem' && (
-            <div className="bg-white border border-gray-200 rounded-xl p-4">
-              <h3 className="text-sm font-semibold mb-1">Images</h3>
-              <p className="text-xs text-gray-400 mb-3">First image will be used as the article cover.</p>
-              <ImageUpload onUpload={imgs => setImages(imgs)} existingImages={images} />
+        {/* ── Editor ────────────────────────────────────────────────────────── */}
+        <div className="px-5 pb-5">
+          <style>{`
+            .tall-editor .ProseMirror { min-height: 500px !important; }
+            .tall-editor .px-4.py-3 { min-height: 540px !important; }
+          `}</style>
+          {editorType === 'rich' && (
+            <div className="tall-editor">
+              <RichEditor content={current.content} onChange={val => updateLang(currentLang, 'content', val)} />
             </div>
           )}
+          {editorType === 'poem' && (
+            <PoemEditor content={current.content} onChange={val => updateLang(currentLang, 'content', val)} language={currentLang} />
+          )}
+          {editorType === 'song' && (
+            <SongEditor content={current.content} onChange={val => updateLang(currentLang, 'content', val)} language={currentLang} />
+          )}
+        </div>
 
-          {/* Featured */}
-          <div className="bg-white border border-gray-200 rounded-xl p-4">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={featured} onChange={e => setFeatured(e.target.checked)} className="w-4 h-4 accent-green-700" />
-              <span className="text-sm font-medium">Featured article</span>
-            </label>
-            <p className="text-xs text-gray-400 mt-1">Featured articles appear on the homepage.</p>
+        {/* ── Language completion ───────────────────────────────────────────── */}
+        <div className="px-5 py-4 border-t border-gray-100 bg-gray-50/60">
+          <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider mb-2">Language completion</p>
+          <div className="grid grid-cols-4 gap-2">
+            {LANGUAGES.map(lang => (
+              <button
+                key={lang.value}
+                onClick={() => setCurrentLang(lang.value)}
+                className={`text-center py-2 px-1 rounded-xl border text-xs transition-all active:scale-95 ${
+                  hasContent(lang.value) ? 'bg-green-50 border-green-200 text-green-700' : 'bg-white border-gray-200 text-gray-400 hover:border-gray-300'
+                } ${currentLang === lang.value ? 'ring-2 ring-green-400 ring-offset-1' : ''}`}
+              >
+                <div className="font-medium">{lang.label}</div>
+                <div className="text-[9px] mt-0.5 opacity-70">{hasContent(lang.value) ? '✓ Done' : 'Empty'}</div>
+              </button>
+            ))}
           </div>
+        </div>
+      </div>
 
-          {/* Hint */}
-          <div className={`rounded-xl p-4 text-xs leading-relaxed border ${
-            editorType === 'poem' ? 'bg-purple-50 border-purple-200 text-purple-700'
-            : editorType === 'song' ? 'bg-blue-50 border-blue-200 text-blue-700'
-            : 'bg-amber-50 border-amber-200 text-amber-700'
-          }`}>
-            {editorType === 'poem' && <><strong>Editing a poem.</strong> Each line is a verse line. Blank line = new stanza.</>}
-            {editorType === 'song' && <><strong>Editing song lyrics.</strong> Use + to add Verse, Chorus, Bridge sections.</>}
-            {editorType === 'rich' && <><strong>Tip:</strong> Switch language tabs to edit other language versions.</>}
-          </div>
+      {/* ── Bottom actions ────────────────────────────────────────────────────── */}
+      <div className="flex items-center justify-between mt-4">
+        <button onClick={() => router.back()} className="text-sm text-gray-400 hover:text-gray-600 transition-colors">
+          ← Cancel
+        </button>
+        <div className="flex gap-2 items-center">
+          {/* Featured toggle */}
+          <label className="flex items-center gap-1.5 cursor-pointer text-xs text-gray-500 mr-2">
+            <input
+              type="checkbox"
+              checked={featured}
+              onChange={e => setFeatured(e.target.checked)}
+              className="w-3.5 h-3.5 accent-green-700"
+            />
+            Featured
+          </label>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="px-5 py-2 bg-green-700 text-white rounded-xl text-sm font-medium hover:bg-green-800 disabled:opacity-50 active:scale-95 transition-all"
+          >
+            {saving ? 'Saving...' : 'Save changes'}
+          </button>
         </div>
       </div>
     </div>
