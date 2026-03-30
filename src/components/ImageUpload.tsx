@@ -73,7 +73,8 @@ export default function ImageUpload({
   label = 'Upload Image',
   theme = 'green',
 }: Props) {
-  const [images, setImages] = useState<UploadedImage[]>(existingImages)
+  // FIX: removed internal `images` state entirely.
+  // The component is now fully controlled — existingImages prop is the single source of truth.
   const [processing, setProcessing] = useState<ProcessingFile[]>([])
   const [error, setError] = useState('')
 
@@ -147,22 +148,22 @@ export default function ImageUpload({
       }
     }))
 
-    const next = [...images, ...uploaded]
-    setImages(next)
+    // FIX: use existingImages (prop) instead of local images state to avoid doubling
+    const next = [...existingImages, ...uploaded]
     onUpload(next)
 
     setTimeout(() => setProcessing([]), 2000)
   }
 
   function removeImage(index: number) {
-    const next = images.filter((_, i) => i !== index)
-    setImages(next)
+    // FIX: derive from existingImages prop, not internal state
+    const next = existingImages.filter((_, i) => i !== index)
     onUpload(next)
   }
 
   function updateCaption(index: number, caption: string) {
-    const next = images.map((img, i) => (i === index ? { ...img, caption } : img))
-    setImages(next)
+    // FIX: derive from existingImages prop, not internal state
+    const next = existingImages.map((img, i) => (i === index ? { ...img, caption } : img))
     onUpload(next)
   }
 
@@ -176,7 +177,7 @@ export default function ImageUpload({
     <div className="space-y-3">
 
       {/* ── Image previews ──────────────────────────────────────────────────── */}
-      {images.map((img, i) => (
+      {existingImages.map((img, i) => (
         <div key={i} className="border border-gray-200 rounded-lg overflow-hidden">
           <div className="relative">
             <img src={img.url} alt={`Upload ${i + 1}`} className="w-full h-40 object-cover" />
@@ -275,9 +276,9 @@ export default function ImageUpload({
               <p className="text-xs text-gray-400 mt-0.5">
                 JPG, PNG, GIF, WEBP · max 10MB each · auto-compressed
               </p>
-              {images.length > 0 && (
+              {existingImages.length > 0 && (
                 <p className={`text-xs mt-0.5 ${t.imageCount}`}>
-                  {images.length} image{images.length > 1 ? 's' : ''} · First is the cover
+                  {existingImages.length} image{existingImages.length > 1 ? 's' : ''} · First is the cover
                 </p>
               )}
             </>

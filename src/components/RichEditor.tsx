@@ -15,6 +15,7 @@ interface Props {
 export default function RichEditor({ content, onChange, placeholder = 'Write here...' }: Props) {
   const [showLinkInput, setShowLinkInput] = useState(false)
   const [linkUrl, setLinkUrl] = useState('')
+  const [appliedLink, setAppliedLink] = useState('') // tracks the saved URL to show as pill
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -39,33 +40,42 @@ export default function RichEditor({ content, onChange, placeholder = 'Write her
   })
 
   useEffect(() => {
-    if (editor && content !== editor.getHTML()) {
+    if (!editor) return
+    // FIX: only reset editor from prop when the editor is not focused,
+    // so unsaved links are not wiped on re-renders (e.g. language tab switch).
+    if (content !== editor.getHTML() && !editor.isFocused) {
       editor.commands.setContent(content)
     }
-  }, [content])
+  }, [content, editor])
 
   function applyLink() {
     if (!editor) return
     const url = linkUrl.trim()
     if (!url) {
       editor.chain().focus().unsetLink().run()
+      setAppliedLink('')
+      setShowLinkInput(false)
+      setLinkUrl('')
     } else {
       const href = url.startsWith('http') ? url : `https://${url}`
       editor.chain().focus().setLink({ href }).run()
+      // FIX: keep bar open and show the applied URL as a pill on the right
+      setLinkUrl(href)
+      setAppliedLink(href)
     }
-    setLinkUrl('')
-    setShowLinkInput(false)
   }
 
   function openLinkInput() {
     if (!editor) return
     const existing = editor.getAttributes('link').href ?? ''
     setLinkUrl(existing)
+    setAppliedLink(existing) // pre-fill pill if editing existing link
     setShowLinkInput(v => !v)
   }
 
   function removeLink() {
     editor?.chain().focus().unsetLink().run()
+    setAppliedLink('')
     setShowLinkInput(false)
     setLinkUrl('')
   }
@@ -92,6 +102,12 @@ export default function RichEditor({ content, onChange, placeholder = 'Write her
   )
 
   const isLinkActive = editor.isActive('link')
+
+  // Shorten URL for display in the pill (strip https://, truncate)
+  const displayUrl = appliedLink
+    .replace(/^https?:\/\//, '')
+    .replace(/\/$/, '')
+    .slice(0, 40)
 
   return (
     <div className="border border-gray-200 rounded-xl overflow-hidden">
@@ -184,42 +200,70 @@ export default function RichEditor({ content, onChange, placeholder = 'Write her
       {/* ── Link input bar — slides in below toolbar ─────────────────────────── */}
       {showLinkInput && (
         <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 border-b border-blue-100">
+          {/* Link icon */}
           <svg className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
               d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
           </svg>
+
+          {/* URL input */}
           <input
             autoFocus
             type="url"
             value={linkUrl}
-            onChange={e => setLinkUrl(e.target.value)}
+            onChange={e => { setLinkUrl(e.target.value); setAppliedLink('') }}
             onKeyDown={e => {
               if (e.key === 'Enter') { e.preventDefault(); applyLink() }
-              if (e.key === 'Escape') { setShowLinkInput(false); setLinkUrl('') }
+              if (e.key === 'Escape') { setShowLinkInput(false); setLinkUrl(''); setAppliedLink('') }
             }}
             placeholder="https://example.com"
-            className="flex-1 text-sm bg-transparent outline-none text-blue-900 placeholder:text-blue-300"
+            className="flex-1 text-sm bg-transparent outline-none text-blue-900 placeholder:text-blue-300 min-w-0"
           />
-          <button
-            type="button"
-            onMouseDown={e => { e.preventDefault(); applyLink() }}
-            className="text-xs px-2.5 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-medium"
-          >
-            Apply
-          </button>
+
+          {/* Apply button — hidden once link is applied */}
+          {!appliedLink && (
+            <button
+              type="button"
+              onMouseDown={e => { e.preventDefault(); applyLink() }}
+              className="text-xs px-2.5 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-medium flex-shrink-0"
+            >
+              Apply
+            </button>
+          )}
+
+          {/* ✅ Applied pill — shows on the right after Apply is tapped */}
+          {appliedLink && (
+            <a
+              href={appliedLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              onMouseDown={e => e.stopPropagation()}
+              className="flex items-center gap-1 text-xs px-2.5 py-1 bg-green-100 text-green-800 border border-green-200 rounded-full hover:bg-green-200 transition-colors flex-shrink-0 max-w-[180px]"
+              title={appliedLink}
+            >
+              <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              <span className="truncate">{displayUrl}</span>
+            </a>
+          )}
+
+          {/* Remove button */}
           {isLinkActive && (
             <button
               type="button"
               onMouseDown={e => { e.preventDefault(); removeLink() }}
-              className="text-xs px-2.5 py-1 border border-red-200 text-red-500 rounded-md hover:bg-red-50 transition-colors"
+              className="text-xs px-2.5 py-1 border border-red-200 text-red-500 rounded-md hover:bg-red-50 transition-colors flex-shrink-0"
             >
               Remove
             </button>
           )}
+
+          {/* Close button */}
           <button
             type="button"
-            onMouseDown={e => { e.preventDefault(); setShowLinkInput(false); setLinkUrl('') }}
-            className="text-gray-400 hover:text-gray-600 transition-colors ml-1"
+            onMouseDown={e => { e.preventDefault(); setShowLinkInput(false); setLinkUrl(''); setAppliedLink('') }}
+            className="text-gray-400 hover:text-gray-600 transition-colors ml-1 flex-shrink-0"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
