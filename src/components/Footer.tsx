@@ -21,28 +21,6 @@ export default function Footer() {
               </div>
             </div>
           </div>
-
-          {/* Help build Marapedia */}
-          <div className="bg-green-50 border border-green-200 rounded-xl p-5">
-            <h3 className="font-display text-base font-semibold text-green-900 mb-2">Help build Marapedia</h3>
-            <p className="text-sm text-green-800 leading-relaxed mb-4">
-              Know something about Mara history, songs, places, or culture? Share it with the community.
-            </p>
-            <Link href="/articles/create"
-              className="block text-center text-sm px-4 py-2 bg-green-700 text-white rounded-lg hover:bg-green-800 transition-colors">
-              + Create an article
-            </Link>
-          </div>
-
-          {/* Did you know */}
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-5">
-            <h3 className="font-display text-base font-semibold text-amber-900 mb-2">Did you know?</h3>
-            <p className="text-sm text-amber-800 leading-relaxed">
-              The Mara people have <strong>12 dialects</strong>, with Tlosai being the official language
-              used in schools, churches, and official communication.
-            </p>
-          </div>
-
         </div>
 
         <div className="mt-8 pt-4 border-t border-gray-100 flex justify-between items-center text-xs text-gray-400">

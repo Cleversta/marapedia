@@ -15,8 +15,16 @@ export default function Navbar() {
   const [searchQuery, setSearchQuery] = useState('')
   const [searchFocused, setSearchFocused] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [shortcutLabel, setShortcutLabel] = useState('Ctrl K') // ✅ Fix: default same on server & client
   const menuRef = useRef<HTMLDivElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    // ✅ Fix: detect Mac only on client after mount
+    if (/Mac|iPhone|iPad/.test(navigator.platform)) {
+      setShortcutLabel('⌘K')
+    }
+  }, [])
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -79,8 +87,6 @@ export default function Navbar() {
 
   const isEditor = profile?.role === 'editor' || profile?.role === 'admin'
   const isAdmin = profile?.role === 'admin'
-  const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform)
-  const shortcutLabel = isMac ? '⌘K' : 'Ctrl K'
 
   function catHref(cat: typeof CATEGORIES[number]) {
     return (cat as any).href ?? `/category/${cat.value}`
@@ -425,8 +431,6 @@ export default function Navbar() {
                   <RoleBadge />
                 </div>
               )}
-
-              {/* ✅ Browse categories removed — now shown in the scrollable tab bar above */}
 
               {/* Quick links */}
               {user && (
