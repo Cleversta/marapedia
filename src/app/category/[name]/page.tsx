@@ -7,19 +7,21 @@ import type { Category, Article } from '@/types'
 export const revalidate = 1800
 
 interface Props {
-  params: { name: string }
+  params: Promise<{ name: string }>
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const cat = getCategoryInfo(params.name as Category)
+  const { name } = await params
+  const cat = getCategoryInfo(name as Category)
   return {
     title: `${cat.label} — Marapedia`,
-    description: `Browse all ${cat.label.toLowerCase()} articles on Marapedia, the free Mara encyclopedia.`,
+    description: `Browse all ${cat.label.toLowerCase()} articles on Marapedia.`,
   }
 }
 
 export default async function CategoryPage({ params }: Props) {
-  const category = params.name as Category
+  const { name } = await params
+  const category = name as Category
 
   const { data: articles } = await supabase
     .from('articles')
