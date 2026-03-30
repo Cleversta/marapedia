@@ -8,7 +8,7 @@ import type { Article } from '@/types'
 export const revalidate = 3600
 
 interface Props {
-  params: { slug: string }
+  params: Promise<{ slug: string }>
 }
 
 const getArticle = unstable_cache(
@@ -31,7 +31,8 @@ const getArticle = unstable_cache(
 )
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const data = await getArticle(params.slug)
+  const { slug } = await params
+  const data = await getArticle(slug)
   if (!data) return { title: 'Article Not Found' }
 
   const translation =
@@ -51,18 +52,18 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title,
     description,
-openGraph: {
-  title,
-  description,
-  url: `https://marapedia.org/articles/${data.slug}`,
-  type: 'article',
-  publishedTime: data.created_at,
-  modifiedTime: data.updated_at ?? undefined,   // ✅ null → undefined
-  authors: [authorName],
-  images: data.thumbnail_url
-    ? [{ url: data.thumbnail_url, width: 1200, height: 630, alt: title }]
-    : [{ url: '/og-image.png', width: 1200, height: 630, alt: title }],
-},
+    openGraph: {
+      title,
+      description,
+      url: `https://marapedia.org/articles/${data.slug}`,
+      type: 'article',
+      publishedTime: data.created_at,
+      modifiedTime: data.updated_at ?? undefined,
+      authors: [authorName],
+      images: data.thumbnail_url
+        ? [{ url: data.thumbnail_url, width: 1200, height: 630, alt: title }]
+        : [{ url: '/og-image.png', width: 1200, height: 630, alt: title }],
+    },
     twitter: {
       card: 'summary_large_image',
       title,
@@ -73,7 +74,8 @@ openGraph: {
 }
 
 export default async function ArticleDetailPage({ params }: Props) {
-  const article = await getArticle(params.slug)
+  const { slug } = await params
+  const article = await getArticle(slug)
   if (!article) notFound()
   return <ArticleDetailClient article={article} />
 }
