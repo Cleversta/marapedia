@@ -154,25 +154,25 @@ export default function Navbar() {
           {/* ── Top bar ── */}
           <div className="flex items-center h-[60px] gap-4">
 
-        <Link href="/" className="shrink-0 flex items-center gap-2.5 group">
-          <div className="relative">
-            <div className="absolute inset-0 rounded-full bg-green-100 scale-0 group-hover:scale-110 transition-transform duration-300 ease-out" />
-            <img
-              src="/MARAPEDIA.png"
-              alt="Marapedia"
-              className="relative h-11 w-11 object-contain drop-shadow-sm
-                transition-all duration-300 group-hover:scale-105 group-hover:drop-shadow-md"
-            />
-          </div>
-          <div className="flex flex-col leading-none">
-            <span className="font-display text-[1.15rem] font-bold tracking-tight text-gray-900">
-              Mara<span className="text-green-700">pedia</span>
-            </span>
-            <span className="text-[9px] text-gray-400 tracking-[0.2em] uppercase font-medium mt-0.5">
-              Since 2026
-            </span>
-          </div>
-        </Link>
+            <Link href="/" className="shrink-0 flex items-center gap-2.5 group">
+              <div className="relative">
+                <div className="absolute inset-0 rounded-full bg-green-100 scale-0 group-hover:scale-110 transition-transform duration-300 ease-out" />
+                <img
+                  src="/MARAPEDIA.png"
+                  alt="Marapedia"
+                  className="relative h-11 w-11 object-contain drop-shadow-sm
+                    transition-all duration-300 group-hover:scale-105 group-hover:drop-shadow-md"
+                />
+              </div>
+              <div className="flex flex-col leading-none">
+                <span className="font-display text-[1.15rem] font-bold tracking-tight text-gray-900">
+                  Mara<span className="text-green-700">pedia</span>
+                </span>
+                <span className="text-[9px] text-gray-400 tracking-[0.2em] uppercase font-medium mt-0.5">
+                  Since 2026
+                </span>
+              </div>
+            </Link>
 
             {/* Search — desktop */}
             <form onSubmit={handleSearch} className="hidden md:flex flex-1 max-w-md mx-auto">
@@ -218,14 +218,14 @@ export default function Navbar() {
             <div className="flex items-center gap-2 ml-auto shrink-0">
               {user ? (
                 <>
-<Link
-  href={pathname.startsWith('/category/') 
-    ? `/articles/create?category=${pathname.split('/category/')[1]}`
-    : '/articles/create'}
-  className="hidden md:flex items-center gap-1.5 text-sm px-3.5 py-2
-    bg-green-700 text-white rounded-lg hover:bg-green-800
-    active:scale-95 transition-all duration-150 font-medium shadow-sm shadow-green-900/20"
->
+                  <Link
+                    href={pathname.startsWith('/category/')
+                      ? `/articles/create?category=${pathname.split('/category/')[1]}`
+                      : '/articles/create'}
+                    className="hidden md:flex items-center gap-1.5 text-sm px-3.5 py-2
+                      bg-green-700 text-white rounded-lg hover:bg-green-800
+                      active:scale-95 transition-all duration-150 font-medium shadow-sm shadow-green-900/20"
+                  >
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
                     </svg>
@@ -365,6 +365,28 @@ export default function Navbar() {
               </Link>
             ))}
           </nav>
+
+          {/* ── Category pill tabs — mobile (below top bar, always visible) ── */}
+          <nav
+            className="md:hidden flex items-center gap-1.5 overflow-x-auto scrollbar-hide border-t border-gray-100 py-2 -mx-4 px-4"
+            aria-label="Category navigation mobile"
+          >
+            {CATEGORIES.map(cat => (
+              <Link
+                key={cat.value}
+                href={catHref(cat)}
+                className={`flex items-center gap-1 text-[11px] px-2.5 py-1.5 whitespace-nowrap
+                  rounded-full border font-medium shrink-0 transition-all duration-150
+                  ${isCatActive(cat)
+                    ? 'border-green-700 bg-green-700 text-white shadow-sm shadow-green-900/20'
+                    : 'border-gray-200 bg-white text-gray-500 hover:border-green-300 hover:text-green-700 hover:bg-green-50'
+                  }`}
+              >
+                <span>{cat.icon}</span>
+                <span>{cat.label}</span>
+              </Link>
+            ))}
+          </nav>
         </div>
 
         {/* ── Mobile menu ── */}
@@ -404,27 +426,7 @@ export default function Navbar() {
                 </div>
               )}
 
-              {/* Categories — pill grid */}
-              <div>
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2.5 px-1">Browse</p>
-                <div className="flex flex-wrap gap-2">
-                  {CATEGORIES.map(cat => (
-                    <Link
-                      key={cat.value}
-                      href={catHref(cat)}
-                      onClick={() => setMobileMenuOpen(false)}
-                      className={`flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-full border font-medium transition-all duration-150
-                        ${isCatActive(cat)
-                          ? 'border-green-700 bg-green-700 text-white shadow-sm shadow-green-900/20'
-                          : 'border-gray-200 bg-white text-gray-600 hover:border-green-300 hover:text-green-700 hover:bg-green-50'
-                        }`}
-                    >
-                      <span>{cat.icon}</span>
-                      <span>{cat.label}</span>
-                    </Link>
-                  ))}
-                </div>
-              </div>
+              {/* ✅ Browse categories removed — now shown in the scrollable tab bar above */}
 
               {/* Quick links */}
               {user && (
@@ -456,15 +458,15 @@ export default function Navbar() {
               <div className="pt-1 space-y-2">
                 {user ? (
                   <>
-<Link
-  href={pathname.startsWith('/category/') 
-    ? `/articles/create?category=${pathname.split('/category/')[1]}`
-    : '/articles/create'}
-  onClick={() => setMobileMenuOpen(false)}
-  className="flex items-center justify-center gap-2 text-sm px-4 py-3
-    bg-green-700 text-white rounded-xl hover:bg-green-800 active:scale-95
-    transition-all duration-150 font-semibold shadow-sm shadow-green-900/20"
->
+                    <Link
+                      href={pathname.startsWith('/category/')
+                        ? `/articles/create?category=${pathname.split('/category/')[1]}`
+                        : '/articles/create'}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex items-center justify-center gap-2 text-sm px-4 py-3
+                        bg-green-700 text-white rounded-xl hover:bg-green-800 active:scale-95
+                        transition-all duration-150 font-semibold shadow-sm shadow-green-900/20"
+                    >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
                       </svg>

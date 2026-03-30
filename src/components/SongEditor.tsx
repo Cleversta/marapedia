@@ -41,11 +41,10 @@ function getSectionConfig(type: string) {
   return SECTION_TYPES.find(s => s.type === type) ?? SECTION_TYPES[0]
 }
 
-// ✅ removed encodeURIComponent
 function serialize(sections: Section[], meta: SongMeta): string {
   const metaComment = `<!--meta:${JSON.stringify(meta)}-->`
+  // ✅ No longer filters out empty sections — preserves structure even when empty
   const sectionsHtml = sections
-    .filter(s => s.content.trim() || s.chords.trim())
     .map(s =>
       `<div class="song-section" data-type="${s.type}" data-label="${s.label}" data-chords="${s.chords}"><h4>[${s.label}]</h4>${
         s.content.split('\n').map(l => `<p>${l || '&nbsp;'}</p>`).join('')
@@ -55,22 +54,43 @@ function serialize(sections: Section[], meta: SongMeta): string {
   return metaComment + '\n' + sectionsHtml
 }
 
-// ✅ removed decodeURIComponent
+// ✅ Regex-based — no DOMParser, works on server and client
 function htmlToSections(html: string): Section[] {
   if (!html || html === '<p></p>') return []
   try {
-    const parser = new DOMParser()
-    const doc = parser.parseFromString(html, 'text/html')
-    const divs = doc.querySelectorAll('.song-section')
-    if (divs.length === 0) return []
-    return Array.from(divs).map((div, i) => {
-      const type = (div.getAttribute('data-type') ?? 'verse') as Section['type']
-      const label = div.getAttribute('data-label') ?? 'Verse'
-      const chords = div.getAttribute('data-chords') ?? ''
-      const paragraphs = Array.from(div.querySelectorAll('p'))
-      const content = paragraphs.map(p => p.textContent === '\u00a0' ? '' : (p.textContent ?? '')).join('\n')
-      return { id: String(i), type, label, content, chords }
-    })
+    const sections: Section[] = []
+    const divRegex = /<div[^>]*class="song-section"[^>]*>([\s\S]*?)<\/div>/g
+    let match: RegExpExecArray | null
+    let i = 0
+
+    while ((match = divRegex.exec(html)) !== null) {
+      const divTag = match[0]
+      const inner = match[1] ?? ''
+
+      const type = (divTag.match(/data-type="([^"]*)"/) ?.[1] ?? 'verse') as Section['type']
+      const label = divTag.match(/data-label="([^"]*)"/)?.[1] ?? 'Verse'
+      const chords = divTag.match(/data-chords="([^"]*)"/)?.[1] ?? ''
+
+      // Strip h4, then parse <p> lines
+      const bodyHtml = inner.replace(/<h4[^>]*>[\s\S]*?<\/h4>/g, '')
+      const lines: string[] = []
+      const pRegex = /<p>([\s\S]*?)<\/p>/g
+      let pMatch: RegExpExecArray | null
+      while ((pMatch = pRegex.exec(bodyHtml)) !== null) {
+        const text = pMatch[1]
+          .replace(/&nbsp;/g, '\u00a0')
+          .replace(/<[^>]+>/g, '')
+          .replace(/&amp;/g, '&')
+          .replace(/&lt;/g, '<')
+          .replace(/&gt;/g, '>')
+        lines.push(text === '\u00a0' ? '' : text)
+      }
+
+      const content = lines.join('\n')
+      sections.push({ id: String(i++), type, label, content, chords })
+    }
+
+    return sections
   } catch { return [] }
 }
 
@@ -99,18 +119,15 @@ const LANG_PLACEHOLDERS: Record<Language, string> = {
 
 export default function SongEditor({ content, onChange, language }: Props) {
   const [sections, setSections] = useState<Section[]>(() => {
-    const parsed = typeof window !== 'undefined' ? htmlToSections(content) : []
+    // ✅ No longer guarded by typeof window — regex parser works everywhere
+    const parsed = htmlToSections(content)
     return parsed.length > 0 ? parsed : [
       { id: makeId(), type: 'verse',  label: 'Verse 1', content: '', chords: '' },
       { id: makeId(), type: 'chorus', label: 'Chorus',  content: '', chords: '' },
     ]
   })
 
-  const [meta, setMeta] = useState<SongMeta>(() =>
-    typeof window !== 'undefined'
-      ? htmlToMeta(content)
-      : { key: '', writer: '', singer: '', reference: '', timeSignature: '', songNumber: '' }
-  )
+  const [meta, setMeta] = useState<SongMeta>(() => htmlToMeta(content))
 
   const [showAddMenu, setShowAddMenu] = useState(false)
   const [showMeta, setShowMeta] = useState(false)

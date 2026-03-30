@@ -4,6 +4,8 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { getCategoryInfo, formatDate, timeAgo, getArticleTypeLabel } from '@/lib/utils'
+import SongViewer from '@/components/SongViewer'
+import PoemViewer from '@/components/PoemViewer'
 import type { Article } from '@/types'
 
 const LANG_LABELS: Record<string, string> = {
@@ -64,6 +66,38 @@ export default function ArticleDetailClient({ article }: { article: Article }) {
   const isOwner = user?.id === article.author_id
   const allImages = allImagesForLightbox()
   const typeLabel = getArticleTypeLabel(article.category, article.article_type)
+
+function renderContent() {
+  console.log('article_type:', article.article_type) // remove after testing
+
+  if (!translation?.content) {
+    return (
+      <div className="py-14 text-center border border-dashed border-stone-200 rounded-2xl">
+        <p className="text-stone-300 italic text-sm">No content in this language yet.</p>
+        {availableLangs.length > 1 && (
+          <p className="text-stone-400 text-xs mt-2">Switch language above to read.</p>
+        )}
+      </div>
+    )
+  }
+
+  // Resolve type from article_type field, fallback to category
+  const type = article.article_type ?? 
+    (article.category === 'songs' ? 'song' :
+     article.category === 'poems' ? 'poem' : null)
+
+  if (type === 'song') {
+    return <SongViewer content={translation.content} title={translation.title ?? ''} />
+  }
+
+  if (type === 'poem') {
+    return <PoemViewer content={translation.content} />
+  }
+
+  return (
+    <div className="article-body" dangerouslySetInnerHTML={{ __html: translation.content }} />
+  )
+}
 
   return (
     <>
@@ -250,16 +284,8 @@ export default function ArticleDetailClient({ article }: { article: Article }) {
             </div>
           )}
 
-          {translation?.content ? (
-            <div className="article-body" dangerouslySetInnerHTML={{ __html: translation.content }} />
-          ) : (
-            <div className="py-14 text-center border border-dashed border-stone-200 rounded-2xl">
-              <p className="text-stone-300 italic text-sm">No content in this language yet.</p>
-              {availableLangs.length > 1 && (
-                <p className="text-stone-400 text-xs mt-2">Switch language above to read.</p>
-              )}
-            </div>
-          )}
+          {/* ✅ Content rendered based on article_type */}
+          {renderContent()}
 
           <footer className="mt-14 pt-5 border-t border-stone-200 flex items-center justify-between flex-wrap gap-3">
             <p className="text-xs text-stone-400 flex items-center gap-1.5">
