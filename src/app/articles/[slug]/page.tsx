@@ -18,6 +18,7 @@ const getArticle = unstable_cache(
       .select(`
         id, slug, category, article_type, status,
         thumbnail_url, view_count, created_at, updated_at, author_id,
+        source_url,
         profiles(username, avatar_url),
         article_translations(id, language, title, content, excerpt),
         images(url, caption)

@@ -42,6 +42,7 @@ export interface Article {
   created_at: string
   updated_at?: string | null
   author_id?: string
+  source_url?: string | null  // ← add this line
   article_translations?: ArticleTranslation[]
   profiles?: Profile | null
   images?: { url: string; caption: string | null }[]
@@ -55,6 +56,7 @@ export interface Profile {
   created_at: string
   avatar_url?: string | null
   bio?: string | null
+  source_url?: string | null
 }
 
 export interface ArticleRevision {

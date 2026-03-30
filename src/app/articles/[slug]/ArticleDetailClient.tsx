@@ -67,37 +67,39 @@ export default function ArticleDetailClient({ article }: { article: Article }) {
   const allImages = allImagesForLightbox()
   const typeLabel = getArticleTypeLabel(article.category, article.article_type)
 
-function renderContent() {
-  console.log('article_type:', article.article_type) // remove after testing
+  // Shorten URL for display in pill
+  const sourceUrlDisplay = article.source_url
+    ? article.source_url.replace(/^https?:\/\//, '').replace(/\/$/, '').slice(0, 40)
+    : null
 
-  if (!translation?.content) {
+  function renderContent() {
+    if (!translation?.content) {
+      return (
+        <div className="py-14 text-center border border-dashed border-stone-200 rounded-2xl">
+          <p className="text-stone-300 italic text-sm">No content in this language yet.</p>
+          {availableLangs.length > 1 && (
+            <p className="text-stone-400 text-xs mt-2">Switch language above to read.</p>
+          )}
+        </div>
+      )
+    }
+
+    const type = article.article_type ??
+      (article.category === 'songs' ? 'song' :
+       article.category === 'poems' ? 'poem' : null)
+
+    if (type === 'song') {
+      return <SongViewer content={translation.content} title={translation.title ?? ''} />
+    }
+
+    if (type === 'poem') {
+      return <PoemViewer content={translation.content} />
+    }
+
     return (
-      <div className="py-14 text-center border border-dashed border-stone-200 rounded-2xl">
-        <p className="text-stone-300 italic text-sm">No content in this language yet.</p>
-        {availableLangs.length > 1 && (
-          <p className="text-stone-400 text-xs mt-2">Switch language above to read.</p>
-        )}
-      </div>
+      <div className="article-body" dangerouslySetInnerHTML={{ __html: translation.content }} />
     )
   }
-
-  // Resolve type from article_type field, fallback to category
-  const type = article.article_type ?? 
-    (article.category === 'songs' ? 'song' :
-     article.category === 'poems' ? 'poem' : null)
-
-  if (type === 'song') {
-    return <SongViewer content={translation.content} title={translation.title ?? ''} />
-  }
-
-  if (type === 'poem') {
-    return <PoemViewer content={translation.content} />
-  }
-
-  return (
-    <div className="article-body" dangerouslySetInnerHTML={{ __html: translation.content }} />
-  )
-}
 
   return (
     <>
@@ -200,6 +202,22 @@ function renderContent() {
               {article.status !== 'published' && (
                 <span className="text-xs px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200 font-medium">Draft</span>
               )}
+              {/* ── Source URL pill in nav ── */}
+              {article.source_url && (
+                <a
+                  href={article.source_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-full bg-stone-100 border border-stone-200 text-stone-500 hover:bg-stone-200 hover:text-stone-700 transition-all font-medium max-w-[160px]"
+                  title={article.source_url}
+                >
+                  <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                  </svg>
+                  <span className="truncate">{sourceUrlDisplay}</span>
+                </a>
+              )}
               {isOwner && (
                 <Link href={`/articles/edit/${article.slug}`}
                   className="flex items-center gap-1 text-xs px-3 py-1.5 bg-white border border-stone-200 text-stone-500 rounded-lg hover:border-green-300 hover:text-green-700 transition-all font-medium">
@@ -246,11 +264,32 @@ function renderContent() {
               {translation?.title ?? article.slug}
             </h1>
 
-            {typeLabel && (
-              <div className="mb-4">
-                <span className="inline-flex items-center text-xs px-2.5 py-1 rounded-full bg-stone-100 text-stone-500 font-medium border border-stone-200">
-                  {typeLabel}
-                </span>
+            {/* ── Type label + source URL pill below title ── */}
+            {(typeLabel || article.source_url) && (
+              <div className="flex items-center gap-2 flex-wrap mb-4">
+                {typeLabel && (
+                  <span className="inline-flex items-center text-xs px-2.5 py-1 rounded-full bg-stone-100 text-stone-500 font-medium border border-stone-200">
+                    {typeLabel}
+                  </span>
+                )}
+                {article.source_url && (
+                  <a
+                    href={article.source_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full bg-blue-50 text-blue-600 border border-blue-100 hover:bg-blue-100 transition-colors font-medium max-w-[220px]"
+                    title={article.source_url}
+                  >
+                    <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                        d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                    </svg>
+                    <span className="truncate">{sourceUrlDisplay}</span>
+                    <svg className="w-2.5 h-2.5 flex-shrink-0 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                  </a>
+                )}
               </div>
             )}
 
@@ -284,7 +323,6 @@ function renderContent() {
             </div>
           )}
 
-          {/* ✅ Content rendered based on article_type */}
           {renderContent()}
 
           <footer className="mt-14 pt-5 border-t border-stone-200 flex items-center justify-between flex-wrap gap-3">

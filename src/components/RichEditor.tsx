@@ -16,14 +16,18 @@ export default function RichEditor({ content, onChange, placeholder = 'Write her
   const [showLinkInput, setShowLinkInput] = useState(false)
   const [linkUrl, setLinkUrl] = useState('')
   const [appliedLink, setAppliedLink] = useState('') // tracks the saved URL to show as pill
+  const [savedSelection, setSavedSelection] = useState<{ from: number; to: number } | null>(null)
 
   const editor = useEditor({
     immediatelyRender: false,
-    extensions: [
-      StarterKit,
-      Image.configure({ inline: false, allowBase64: true }),
+// AFTER
+extensions: [
+  StarterKit.configure({
+    link: false,
+  }),
+  Image.configure({ inline: false, allowBase64: true }),
       Link.configure({
-        openOnClick: true,
+        openOnClick: false, // FIX: was true — caused click to open URL instead of keeping cursor
         HTMLAttributes: {
           class: 'prose-link',
           target: '_blank',
@@ -41,36 +45,63 @@ export default function RichEditor({ content, onChange, placeholder = 'Write her
 
   useEffect(() => {
     if (!editor) return
-    // FIX: only reset editor from prop when the editor is not focused,
+    // Only reset editor from prop when not focused,
     // so unsaved links are not wiped on re-renders (e.g. language tab switch).
     if (content !== editor.getHTML() && !editor.isFocused) {
       editor.commands.setContent(content)
     }
   }, [content, editor])
 
+  function openLinkInput() {
+    if (!editor) return
+
+    // Save selection BEFORE focus is lost to the input field
+    const { from, to } = editor.state.selection
+    const selectedText = editor.state.doc.textBetween(from, to)
+    console.log('[RichEditor] openLinkInput — from:', from, 'to:', to, 'text:', selectedText)
+    setSavedSelection({ from, to })
+
+    const existing = editor.getAttributes('link').href ?? ''
+    setLinkUrl(existing)
+    setAppliedLink(existing) // pre-fill pill if editing existing link
+    setShowLinkInput(v => !v)
+  }
+
   function applyLink() {
     if (!editor) return
+
+    // DEBUG: log selection state at apply time
+    const currentSel = editor.state.selection
+    const currentText = editor.state.doc.textBetween(currentSel.from, currentSel.to)
+    console.log('[RichEditor] applyLink — currentSel empty:', currentSel.empty, 'text:', currentText)
+    console.log('[RichEditor] applyLink — savedSelection:', savedSelection)
+
     const url = linkUrl.trim()
+
+    // Build chain — start by restoring the saved selection so the link
+    // is applied to the originally selected text, not wherever focus ended up
+    let chain = editor.chain().focus()
+    if (savedSelection && (savedSelection.from !== savedSelection.to)) {
+      chain = (chain as any).setTextSelection(savedSelection)
+    }
+
     if (!url) {
-      editor.chain().focus().unsetLink().run()
+      chain.unsetLink().run()
       setAppliedLink('')
       setShowLinkInput(false)
       setLinkUrl('')
     } else {
       const href = url.startsWith('http') ? url : `https://${url}`
-      editor.chain().focus().setLink({ href }).run()
-      // FIX: keep bar open and show the applied URL as a pill on the right
+      chain.setLink({ href }).run()
+
+      // DEBUG: log resulting HTML to confirm <a> tag was written
+      console.log('[RichEditor] applyLink — HTML after setLink:', editor.getHTML().substring(0, 300))
+
       setLinkUrl(href)
       setAppliedLink(href)
     }
-  }
 
-  function openLinkInput() {
-    if (!editor) return
-    const existing = editor.getAttributes('link').href ?? ''
-    setLinkUrl(existing)
-    setAppliedLink(existing) // pre-fill pill if editing existing link
-    setShowLinkInput(v => !v)
+    setSavedSelection(null)
   }
 
   function removeLink() {
@@ -78,6 +109,7 @@ export default function RichEditor({ content, onChange, placeholder = 'Write her
     setAppliedLink('')
     setShowLinkInput(false)
     setLinkUrl('')
+    setSavedSelection(null)
   }
 
   if (!editor) return null
@@ -214,7 +246,12 @@ export default function RichEditor({ content, onChange, placeholder = 'Write her
             onChange={e => { setLinkUrl(e.target.value); setAppliedLink('') }}
             onKeyDown={e => {
               if (e.key === 'Enter') { e.preventDefault(); applyLink() }
-              if (e.key === 'Escape') { setShowLinkInput(false); setLinkUrl(''); setAppliedLink('') }
+              if (e.key === 'Escape') {
+                setShowLinkInput(false)
+                setLinkUrl('')
+                setAppliedLink('')
+                setSavedSelection(null)
+              }
             }}
             placeholder="https://example.com"
             className="flex-1 text-sm bg-transparent outline-none text-blue-900 placeholder:text-blue-300 min-w-0"
@@ -262,7 +299,13 @@ export default function RichEditor({ content, onChange, placeholder = 'Write her
           {/* Close button */}
           <button
             type="button"
-            onMouseDown={e => { e.preventDefault(); setShowLinkInput(false); setLinkUrl(''); setAppliedLink('') }}
+            onMouseDown={e => {
+              e.preventDefault()
+              setShowLinkInput(false)
+              setLinkUrl('')
+              setAppliedLink('')
+              setSavedSelection(null)
+            }}
             className="text-gray-400 hover:text-gray-600 transition-colors ml-1 flex-shrink-0"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

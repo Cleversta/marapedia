@@ -36,6 +36,7 @@ export default function CreateArticlePage() {
   const [articleType, setArticleType] = useState<string>('')
   const [images, setImages] = useState<UploadedImage[]>([])
   const [showImageUpload, setShowImageUpload] = useState(false)
+  const [sourceUrl, setSourceUrl] = useState('') // ← NEW
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -93,6 +94,7 @@ export default function CreateArticlePage() {
         slug, category, status, author_id: user.id,
         thumbnail_url: images[0]?.url ?? null,
         article_type: articleType || null,
+        source_url: sourceUrl.trim() || null, // ← NEW
       })
       .select().single()
 
@@ -191,7 +193,7 @@ export default function CreateArticlePage() {
           </div>
         )}
 
-        {/* ── Image strip — shown for ALL editor types including poem ──────── */}
+        {/* ── Image strip ──────────────────────────────────────────────────── */}
         <div className={`px-5 py-2.5 border-b border-gray-100 ${images.length > 0 ? 'bg-gray-50/40' : ''}`}>
           <div className="flex items-center gap-2.5">
             {images.map((img, i) => (
@@ -230,6 +232,30 @@ export default function CreateArticlePage() {
                 label="Upload images"
               />
             </div>
+          )}
+        </div>
+
+        {/* ── Source URL ───────────────────────────────────────────────────── */}
+        <div className="px-5 py-3 border-b border-gray-100 flex items-center gap-3">
+          <svg className="w-3.5 h-3.5 text-gray-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+          </svg>
+          <input
+            type="url"
+            value={sourceUrl}
+            onChange={e => setSourceUrl(e.target.value)}
+            placeholder="Source / related link (optional)  e.g. https://..."
+            className="flex-1 text-sm text-gray-600 placeholder:text-gray-300 bg-transparent outline-none"
+          />
+          {sourceUrl && (
+            <button
+              type="button"
+              onClick={() => setSourceUrl('')}
+              className="text-gray-300 hover:text-red-400 transition-colors text-xs flex-shrink-0"
+            >
+              × clear
+            </button>
           )}
         </div>
 

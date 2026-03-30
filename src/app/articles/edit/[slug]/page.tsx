@@ -33,6 +33,7 @@ export default function EditArticlePage() {
   const [articleType, setArticleType] = useState<string>('')
   const [images, setImages] = useState<UploadedImage[]>([])
   const [featured, setFeatured] = useState(false)
+  const [sourceUrl, setSourceUrl] = useState('') // ← NEW
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -65,6 +66,7 @@ export default function EditArticlePage() {
     setCategory(data.category)
     setFeatured(data.featured ?? false)
     setArticleType(data.article_type ?? '')
+    setSourceUrl(data.source_url ?? '') // ← NEW
 
     const newLangs = {
       mara: { title: '', content: '' }, english: { title: '', content: '' },
@@ -117,6 +119,7 @@ export default function EditArticlePage() {
       article_type: articleType || null,
       thumbnail_url: images[0]?.url ?? null,
       featured,
+      source_url: sourceUrl.trim() || null, // ← NEW
       updated_at: new Date().toISOString(),
     }).eq('id', article.id)
 
@@ -148,7 +151,7 @@ export default function EditArticlePage() {
       }, { onConflict: 'article_id,language' })
     }
 
-    // ✅ Bust the Next.js cache so Cloudflare gets fresh content on next request
+    // Bust the Next.js cache so Cloudflare gets fresh content on next request
     await fetch('/api/revalidate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -274,6 +277,31 @@ export default function EditArticlePage() {
               />
             </div>
           </div>
+        </div>
+
+        {/* ── Source URL ───────────────────────────────────────────────────── */}
+        {/* NEW: paste any URL here — shown as a pill on the detail page */}
+        <div className="px-5 py-3 border-b border-gray-100 flex items-center gap-3">
+          <svg className="w-3.5 h-3.5 text-gray-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+          </svg>
+          <input
+            type="url"
+            value={sourceUrl}
+            onChange={e => setSourceUrl(e.target.value)}
+            placeholder="Source / related link (optional)  e.g. https://..."
+            className="flex-1 text-sm text-gray-600 placeholder:text-gray-300 bg-transparent outline-none"
+          />
+          {sourceUrl && (
+            <button
+              type="button"
+              onClick={() => setSourceUrl('')}
+              className="text-gray-300 hover:text-red-400 transition-colors text-xs flex-shrink-0"
+            >
+              × clear
+            </button>
+          )}
         </div>
 
         {/* ── Language tabs ─────────────────────────────────────────────────── */}
