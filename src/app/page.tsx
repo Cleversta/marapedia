@@ -37,15 +37,12 @@ async function getFeaturedArticle(): Promise<Article | null> {
 }
 
 async function getRecentArticles(): Promise<Article[]> {
-  const { data, error } = await supabase
+  const { data } = await supabase
     .from('articles')
     .select(ARTICLE_FIELDS)
     .eq('status', 'published')
     .order('updated_at', { ascending: false })
     .limit(6)
-  
-  console.log('DATA:', JSON.stringify(data, null, 2))
-  console.log('ERROR:', error)
   return (data ?? []) as unknown as Article[]
 }
 
