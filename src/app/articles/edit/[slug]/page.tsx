@@ -46,7 +46,8 @@ export default function EditArticlePage() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session) { router.push('/login'); return }
       setUser(session.user)
-      supabase.from('profiles').select('*').eq('id', session.user.id).single().then(({ data }) => setProfile(data))
+      supabase.from('profiles').select('*').eq('id', session.user.id).single()
+        .then(({ data }) => setProfile(data))
     })
     fetchArticle()
   }, [slug])
@@ -75,7 +76,8 @@ export default function EditArticlePage() {
     setLangs(newLangs)
 
     const { data: existingImages } = await supabase
-      .from('images').select('url, caption').eq('article_id', data.id).order('created_at', { ascending: true })
+      .from('images').select('url, caption').eq('article_id', data.id)
+      .order('created_at', { ascending: true })
     setImages((existingImages ?? []).map(img => ({ url: img.url, caption: img.caption ?? '' })))
   }
 
@@ -94,8 +96,13 @@ export default function EditArticlePage() {
     setSuccess('')
 
     const canEdit = profile?.role === 'admin' || article.author_id === user.id
-    if (!canEdit) { setError('You do not have permission to edit this article.'); setSaving(false); return }
+    if (!canEdit) {
+      setError('You do not have permission to edit this article.')
+      setSaving(false)
+      return
+    }
 
+    // Save revision of current translation before overwriting
     const existing = article.article_translations?.find(t => t.language === currentLang)
     if (existing && langs[currentLang].title) {
       await supabase.from('article_revisions').insert({
@@ -104,6 +111,7 @@ export default function EditArticlePage() {
       })
     }
 
+    // Update article core fields
     await supabase.from('articles').update({
       category,
       article_type: articleType || null,
@@ -112,22 +120,40 @@ export default function EditArticlePage() {
       updated_at: new Date().toISOString(),
     }).eq('id', article.id)
 
+    // Replace images
     await supabase.from('images').delete().eq('article_id', article.id)
     if (images.length > 0) {
       await supabase.from('images').insert(
-        images.map(img => ({ article_id: article.id, url: img.url, caption: img.caption || null, uploaded_by: user.id }))
+        images.map(img => ({
+          article_id: article.id,
+          url: img.url,
+          caption: img.caption || null,
+          uploaded_by: user.id,
+        }))
       )
     }
 
-    const filled = (Object.keys(langs) as Language[]).filter(l => langs[l].title.trim() && langs[l].content.trim())
+    // Upsert translations
+    const filled = (Object.keys(langs) as Language[])
+      .filter(l => langs[l].title.trim() && langs[l].content.trim())
+
     for (const lang of filled) {
       await supabase.from('article_translations').upsert({
         article_id: article.id, language: lang,
-        title: langs[lang].title.trim(), content: langs[lang].content,
+        title: langs[lang].title.trim(),
+        content: langs[lang].content,
         excerpt: makeExcerpt(langs[lang].content, 150),
-        updated_by: user.id, updated_at: new Date().toISOString(),
+        updated_by: user.id,
+        updated_at: new Date().toISOString(),
       }, { onConflict: 'article_id,language' })
     }
+
+    // ✅ Bust the Next.js cache so Cloudflare gets fresh content on next request
+    await fetch('/api/revalidate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ slug }),
+    })
 
     setSuccess('Article saved successfully!')
     setSaving(false)
@@ -226,9 +252,15 @@ export default function EditArticlePage() {
           <div className="flex items-center gap-2.5">
             {images.map((img, i) => (
               <div key={i} className="relative flex-shrink-0">
-                <img src={img.url} alt={img.caption || `Image ${i + 1}`} className="w-10 h-10 object-cover rounded-lg border border-gray-200" />
+                <img
+                  src={img.url}
+                  alt={img.caption || `Image ${i + 1}`}
+                  className="w-10 h-10 object-cover rounded-lg border border-gray-200"
+                />
                 {i === 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 text-[8px] bg-green-600 text-white rounded-full w-4 h-4 flex items-center justify-center font-bold leading-none">C</span>
+                  <span className="absolute -top-1.5 -right-1.5 text-[8px] bg-green-600 text-white rounded-full w-4 h-4 flex items-center justify-center font-bold leading-none">
+                    C
+                  </span>
                 )}
               </div>
             ))}
@@ -236,7 +268,9 @@ export default function EditArticlePage() {
               <ImageUpload
                 onUpload={imgs => setImages(imgs)}
                 existingImages={images}
-                label={images.length > 0 ? `${images.length} image${images.length > 1 ? 's' : ''} · manage` : 'Add images'}
+                label={images.length > 0
+                  ? `${images.length} image${images.length > 1 ? 's' : ''} · manage`
+                  : 'Add images'}
               />
             </div>
           </div>
@@ -256,7 +290,9 @@ export default function EditArticlePage() {
             >
               <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${hasContent(lang.value) ? 'bg-green-500' : 'bg-gray-300'}`} />
               {lang.label}
-              {lang.value !== 'english' && <span className="text-xs text-gray-300 hidden sm:inline">({lang.nativeLabel})</span>}
+              {lang.value !== 'english' && (
+                <span className="text-xs text-gray-300 hidden sm:inline">({lang.nativeLabel})</span>
+              )}
             </button>
           ))}
         </div>
@@ -286,31 +322,48 @@ export default function EditArticlePage() {
           `}</style>
           {editorType === 'rich' && (
             <div className="tall-editor">
-              <RichEditor content={current.content} onChange={val => updateLang(currentLang, 'content', val)} />
+              <RichEditor
+                content={current.content}
+                onChange={val => updateLang(currentLang, 'content', val)}
+              />
             </div>
           )}
           {editorType === 'poem' && (
-            <PoemEditor content={current.content} onChange={val => updateLang(currentLang, 'content', val)} language={currentLang} />
+            <PoemEditor
+              content={current.content}
+              onChange={val => updateLang(currentLang, 'content', val)}
+              language={currentLang}
+            />
           )}
           {editorType === 'song' && (
-            <SongEditor content={current.content} onChange={val => updateLang(currentLang, 'content', val)} language={currentLang} />
+            <SongEditor
+              content={current.content}
+              onChange={val => updateLang(currentLang, 'content', val)}
+              language={currentLang}
+            />
           )}
         </div>
 
         {/* ── Language completion ───────────────────────────────────────────── */}
         <div className="px-5 py-4 border-t border-gray-100 bg-gray-50/60">
-          <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider mb-2">Language completion</p>
+          <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider mb-2">
+            Language completion
+          </p>
           <div className="grid grid-cols-4 gap-2">
             {LANGUAGES.map(lang => (
               <button
                 key={lang.value}
                 onClick={() => setCurrentLang(lang.value)}
                 className={`text-center py-2 px-1 rounded-xl border text-xs transition-all active:scale-95 ${
-                  hasContent(lang.value) ? 'bg-green-50 border-green-200 text-green-700' : 'bg-white border-gray-200 text-gray-400 hover:border-gray-300'
+                  hasContent(lang.value)
+                    ? 'bg-green-50 border-green-200 text-green-700'
+                    : 'bg-white border-gray-200 text-gray-400 hover:border-gray-300'
                 } ${currentLang === lang.value ? 'ring-2 ring-green-400 ring-offset-1' : ''}`}
               >
                 <div className="font-medium">{lang.label}</div>
-                <div className="text-[9px] mt-0.5 opacity-70">{hasContent(lang.value) ? '✓ Done' : 'Empty'}</div>
+                <div className="text-[9px] mt-0.5 opacity-70">
+                  {hasContent(lang.value) ? '✓ Done' : 'Empty'}
+                </div>
               </button>
             ))}
           </div>
@@ -319,11 +372,13 @@ export default function EditArticlePage() {
 
       {/* ── Bottom actions ────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between mt-4">
-        <button onClick={() => router.back()} className="text-sm text-gray-400 hover:text-gray-600 transition-colors">
+        <button
+          onClick={() => router.back()}
+          className="text-sm text-gray-400 hover:text-gray-600 transition-colors"
+        >
           ← Cancel
         </button>
         <div className="flex gap-2 items-center">
-          {/* Featured toggle */}
           <label className="flex items-center gap-1.5 cursor-pointer text-xs text-gray-500 mr-2">
             <input
               type="checkbox"

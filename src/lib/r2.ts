@@ -14,7 +14,7 @@ export async function uploadToR2(
   fileName: string,
   contentType: string
 ): Promise<string> {
-  const key = `uploads/${Date.now()}-${fileName}`
+  const key = `uploads/${fileName}`
 
   await r2Client.send(
     new PutObjectCommand({
@@ -22,6 +22,7 @@ export async function uploadToR2(
       Key: key,
       Body: file,
       ContentType: contentType,
+      CacheControl: 'public, max-age=31536000, immutable',
     })
   )
 
@@ -29,11 +30,15 @@ export async function uploadToR2(
 }
 
 export async function deleteFromR2(url: string): Promise<void> {
-  const key = url.replace(`${process.env.NEXT_PUBLIC_R2_PUBLIC_URL}/`, '')
-  await r2Client.send(
-    new DeleteObjectCommand({
-      Bucket: process.env.R2_BUCKET_NAME!,
-      Key: key,
-    })
-  )
+  try {
+    const key = url.replace(`${process.env.NEXT_PUBLIC_R2_PUBLIC_URL}/`, '')
+    await r2Client.send(
+      new DeleteObjectCommand({
+        Bucket: process.env.R2_BUCKET_NAME!,
+        Key: key,
+      })
+    )
+  } catch (err) {
+    console.error('R2 delete error:', err)
+  }
 }

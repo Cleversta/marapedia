@@ -34,7 +34,7 @@ export default function SearchPage() {
       return
     }
 
-    const ids = [...new Set(data.map(d => d.article_id))]
+    const ids = Array.from(new Set(data.map(d => d.article_id)))
     const { data: articles } = await supabase
       .from('articles')
       .select('*, profiles(*), article_translations(*)')

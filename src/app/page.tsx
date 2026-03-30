@@ -1,41 +1,63 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { timeAgo, getPreferredTranslation } from '@/lib/utils'
 import ArticleCard from '@/components/ArticleCard'
 import type { Article } from '@/types'
 
+export const revalidate = 600
+
+export const metadata: Metadata = {
+  title: 'Marapedia — The Free Mara Encyclopedia',
+  description: 'A community-built encyclopedia preserving the history, culture, language, songs, and traditions of the Mara people — from Maraland to the world.',
+  openGraph: {
+    title: 'Marapedia — The Free Mara Encyclopedia',
+    description: 'A community-built encyclopedia for the Mara people.',
+    url: 'https://marapedia.org',
+    images: [{ url: '/og-image.png', width: 1200, height: 630 }],
+  },
+}
+
+const ARTICLE_FIELDS = `
+  id, slug, category, status, featured, thumbnail_url, view_count, created_at, updated_at,
+  profiles(id, username, avatar_url, role, created_at),
+  article_translations(id, article_id, language, title, excerpt, content)
+`
+
 async function getFeaturedArticle(): Promise<Article | null> {
   const { data } = await supabase
     .from('articles')
-    .select('*, profiles(*), article_translations(*)')
+    .select(ARTICLE_FIELDS)
     .eq('status', 'published')
     .eq('featured', true)
     .order('updated_at', { ascending: false })
     .limit(1)
     .single()
-  return data
+  return data as unknown as Article | null
 }
 
 async function getRecentArticles(): Promise<Article[]> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('articles')
-    .select('*, profiles(*), article_translations(*)')
+    .select(ARTICLE_FIELDS)
     .eq('status', 'published')
     .order('updated_at', { ascending: false })
     .limit(6)
-  return data ?? []
+  
+  console.log('DATA:', JSON.stringify(data, null, 2))
+  console.log('ERROR:', error)
+  return (data ?? []) as unknown as Article[]
 }
 
 async function getMostViewedArticles(): Promise<Article[]> {
   const { data } = await supabase
     .from('articles')
-    .select('*, profiles(*), article_translations(*)')
+    .select(ARTICLE_FIELDS)
     .eq('status', 'published')
     .order('view_count', { ascending: false })
     .limit(6)
-  return data ?? []
+  return (data ?? []) as unknown as Article[]
 }
-
 async function getStats() {
   const [{ count: articleCount }, { count: userCount }] = await Promise.all([
     supabase.from('articles').select('*', { count: 'exact', head: true }).eq('status', 'published'),
@@ -56,7 +78,24 @@ export default async function HomePage() {
 
   return (
     <div>
-      {/* Hero */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'WebSite',
+            name: 'Marapedia',
+            url: 'https://marapedia.org',
+            description: 'A community-built encyclopedia for the Mara people.',
+            potentialAction: {
+              '@type': 'SearchAction',
+              target: 'https://marapedia.org/search?q={search_term_string}',
+              'query-input': 'required name=search_term_string',
+            },
+          }),
+        }}
+      />
+
       <div className="bg-gradient-to-br from-green-50 to-amber-50 border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 py-12 md:py-16">
           <div className="max-w-2xl mx-auto text-center">
@@ -70,8 +109,6 @@ export default async function HomePage() {
               A community-built encyclopedia for the Mara people — from Maraland to the world.
               Share history, songs, stories, and traditions.
             </p>
-
-            {/* Languages */}
             <div className="flex justify-center flex-wrap gap-2 mb-8">
               {['Mara', 'English', 'Myanmar', 'Mizo'].map(lang => (
                 <span key={lang} className="text-xs px-3 py-1 border border-green-200 rounded-full text-green-700 bg-white">
@@ -79,8 +116,6 @@ export default async function HomePage() {
                 </span>
               ))}
             </div>
-
-            {/* Stats */}
             <div className="flex justify-center gap-8">
               <div>
                 <div className="font-display text-2xl font-bold text-green-700">{stats.articles.toLocaleString()}</div>
@@ -99,10 +134,7 @@ export default async function HomePage() {
         </div>
       </div>
 
-      {/* Main content */}
       <div className="max-w-6xl mx-auto px-4 py-10">
-
-        {/* Featured — centered */}
         {featured && featuredTranslation && (
           <div className="mb-10">
             <h2 className="font-display text-lg font-semibold mb-4 pb-2 border-b border-gray-200 text-center">
@@ -134,10 +166,7 @@ export default async function HomePage() {
           </div>
         )}
 
-        {/* Recent Articles + Most Viewed — 2 equal columns */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-
-          {/* Recent Articles */}
           <div>
             <h2 className="font-display text-lg font-semibold mb-4 pb-2 border-b border-gray-200">
               Recent Articles
@@ -152,14 +181,10 @@ export default async function HomePage() {
               </div>
             ) : (
               <div className="flex flex-col gap-4">
-                {recent.map(article => (
-                  <ArticleCard key={article.id} article={article} />
-                ))}
+                {recent.map(article => <ArticleCard key={article.id} article={article} />)}
               </div>
             )}
           </div>
-
-          {/* Most Viewed */}
           <div>
             <h2 className="font-display text-lg font-semibold mb-4 pb-2 border-b border-gray-200">
               Most Viewed
@@ -168,13 +193,10 @@ export default async function HomePage() {
               <p className="text-sm text-gray-400">No articles yet.</p>
             ) : (
               <div className="flex flex-col gap-4">
-                {mostViewed.map(article => (
-                  <ArticleCard key={article.id} article={article} />
-                ))}
+                {mostViewed.map(article => <ArticleCard key={article.id} article={article} />)}
               </div>
             )}
           </div>
-
         </div>
       </div>
     </div>

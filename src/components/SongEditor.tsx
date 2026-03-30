@@ -25,7 +25,6 @@ interface Props {
   language: Language
 }
 
-// ── Section config ────────────────────────────────────────────────────────────
 const SECTION_TYPES = [
   { type: 'verse',      label: 'Verse',      accent: '#3b82f6', bg: '#eff6ff', badge: 'bg-blue-100 text-blue-700' },
   { type: 'chorus',     label: 'Chorus',     accent: '#16a34a', bg: '#f0fdf4', badge: 'bg-green-100 text-green-700' },
@@ -42,12 +41,13 @@ function getSectionConfig(type: string) {
   return SECTION_TYPES.find(s => s.type === type) ?? SECTION_TYPES[0]
 }
 
+// ✅ removed encodeURIComponent
 function serialize(sections: Section[], meta: SongMeta): string {
   const metaComment = `<!--meta:${JSON.stringify(meta)}-->`
   const sectionsHtml = sections
     .filter(s => s.content.trim() || s.chords.trim())
     .map(s =>
-      `<div class="song-section" data-type="${s.type}" data-label="${s.label}" data-chords="${encodeURIComponent(s.chords)}"><h4>[${s.label}]</h4>${
+      `<div class="song-section" data-type="${s.type}" data-label="${s.label}" data-chords="${s.chords}"><h4>[${s.label}]</h4>${
         s.content.split('\n').map(l => `<p>${l || '&nbsp;'}</p>`).join('')
       }</div>`
     )
@@ -55,6 +55,7 @@ function serialize(sections: Section[], meta: SongMeta): string {
   return metaComment + '\n' + sectionsHtml
 }
 
+// ✅ removed decodeURIComponent
 function htmlToSections(html: string): Section[] {
   if (!html || html === '<p></p>') return []
   try {
@@ -65,7 +66,7 @@ function htmlToSections(html: string): Section[] {
     return Array.from(divs).map((div, i) => {
       const type = (div.getAttribute('data-type') ?? 'verse') as Section['type']
       const label = div.getAttribute('data-label') ?? 'Verse'
-      const chords = decodeURIComponent(div.getAttribute('data-chords') ?? '')
+      const chords = div.getAttribute('data-chords') ?? ''
       const paragraphs = Array.from(div.querySelectorAll('p'))
       const content = paragraphs.map(p => p.textContent === '\u00a0' ? '' : (p.textContent ?? '')).join('\n')
       return { id: String(i), type, label, content, chords }
@@ -201,7 +202,6 @@ export default function SongEditor({ content, onChange, language }: Props) {
           <span className="text-xs text-gray-400">{sections.length} sections · {totalLines} lines</span>
         </div>
         <div className="flex items-center gap-2">
-          {/* Chords toggle */}
           <button
             type="button"
             onClick={() => setShowChords(!showChords)}
@@ -218,7 +218,6 @@ export default function SongEditor({ content, onChange, language }: Props) {
             {showChords ? 'Chords on' : 'Chords off'}
           </button>
 
-          {/* Song details toggle */}
           <button
             type="button"
             onClick={() => setShowMeta(!showMeta)}
@@ -248,7 +247,6 @@ export default function SongEditor({ content, onChange, language }: Props) {
             <span className="text-sm font-semibold text-blue-800">Song Information</span>
           </div>
           <div className="p-4 grid grid-cols-2 md:grid-cols-3 gap-4">
-            {/* Song number */}
             <div>
               <label className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
                 <span>🔢</span> Song No.
@@ -258,8 +256,6 @@ export default function SongEditor({ content, onChange, language }: Props) {
                 placeholder="e.g. 541"
                 className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-400/10 bg-gray-50 focus:bg-white transition-all" />
             </div>
-
-            {/* Key */}
             <div>
               <label className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
                 <span>🎹</span> Key (Doh is...)
@@ -270,8 +266,6 @@ export default function SongEditor({ content, onChange, language }: Props) {
                 {MUSICAL_KEYS.map(k => <option key={k} value={k}>{k}</option>)}
               </select>
             </div>
-
-            {/* Time signature */}
             <div>
               <label className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
                 <span>⏱️</span> Time
@@ -282,8 +276,6 @@ export default function SongEditor({ content, onChange, language }: Props) {
                 {TIME_SIGNATURES.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
-
-            {/* Writer */}
             <div>
               <label className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
                 <span>✍️</span> Written by
@@ -293,8 +285,6 @@ export default function SongEditor({ content, onChange, language }: Props) {
                 placeholder="Songwriter name"
                 className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-400/10 bg-gray-50 focus:bg-white transition-all" />
             </div>
-
-            {/* Singer */}
             <div>
               <label className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
                 <span>🎤</span> Sung by
@@ -304,8 +294,6 @@ export default function SongEditor({ content, onChange, language }: Props) {
                 placeholder="Artist or group"
                 className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-400/10 bg-gray-50 focus:bg-white transition-all" />
             </div>
-
-            {/* Bible reference */}
             <div>
               <label className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
                 <span>📖</span> Reference
@@ -331,9 +319,7 @@ export default function SongEditor({ content, onChange, language }: Props) {
               className="section-card bg-white border border-gray-200 rounded-xl overflow-hidden"
               style={{ borderLeft: `3px solid ${cfg.accent}` }}
             >
-              {/* Section header */}
               <div className="flex items-center gap-2 px-3 py-2.5 bg-gray-50/80 border-b border-gray-100">
-                {/* Expand/collapse */}
                 <button
                   type="button"
                   onClick={() => toggleSection(section.id)}
@@ -354,8 +340,6 @@ export default function SongEditor({ content, onChange, language }: Props) {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>
-
-                {/* Controls */}
                 <div className="flex items-center gap-0.5 shrink-0">
                   <button type="button" onClick={() => moveSection(section.id, 'up')}
                     disabled={idx === 0}
@@ -376,10 +360,8 @@ export default function SongEditor({ content, onChange, language }: Props) {
                 </div>
               </div>
 
-              {/* Section body */}
               {isExpanded && (
                 <div>
-                  {/* Chords row */}
                   {showChords && (
                     <div className="border-b border-dashed border-amber-200 bg-amber-50/40">
                       <div className="flex items-center gap-2 px-3 pt-2 pb-1">
@@ -396,8 +378,6 @@ export default function SongEditor({ content, onChange, language }: Props) {
                       />
                     </div>
                   )}
-
-                  {/* Lyrics row */}
                   <div>
                     <div className="flex items-center gap-2 px-3 pt-2.5 pb-1">
                       <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Lyrics</span>
@@ -412,8 +392,6 @@ export default function SongEditor({ content, onChange, language }: Props) {
                       style={{ fontFamily: "'ui-monospace', 'SFMono-Regular', monospace" }}
                     />
                   </div>
-
-                  {/* Line count */}
                   <div className="px-3 pb-2 flex justify-end">
                     <span className="text-[10px] text-gray-300 tabular-nums">
                       {section.content.split('\n').filter(l => l.trim()).length} lines

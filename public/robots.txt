@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /editor
+Disallow: /profile
+Disallow: /articles/create
+Disallow: /articles/edit
+
+Sitemap: https://marapedia.org/sitemap.xml

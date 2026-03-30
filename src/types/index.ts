@@ -27,7 +27,6 @@ export interface ArticleTranslation {
   content: string
   excerpt?: string | null
   thumbnail_url?: string | null
-  created_at: string
 }
 
 export interface Article {
@@ -45,6 +44,7 @@ export interface Article {
   author_id?: string
   article_translations?: ArticleTranslation[]
   profiles?: Profile | null
+  images?: { url: string; caption: string | null }[]
 }
 
 export interface Profile {
