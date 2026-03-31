@@ -1,4 +1,5 @@
 'use client'
+import { useRef } from 'react'
 
 interface SongMeta {
   key?: string
@@ -37,7 +38,6 @@ function parseSongHtml(html: string): { sections: Section[]; meta: SongMeta } {
     const type = typeMatch?.[1] ?? 'verse'
     const label = labelMatch?.[1] ?? 'Verse'
 
-    // Strip h4 label tag
     const bodyHtml = inner.replace(/<h4[^>]*>[\s\S]*?<\/h4>/g, '')
 
     const lines: string[] = []
@@ -73,6 +73,21 @@ interface Props {
 export default function SongViewer({ content, title, songMeta = {} }: Props) {
   const { sections, meta } = parseSongHtml(content)
   const combined = { ...meta, ...songMeta }
+  const printRef = useRef<HTMLDivElement>(null)
+
+  async function handleSaveImage() {
+    if (!printRef.current) return
+    const html2canvas = (await import('html2canvas')).default
+    const canvas = await html2canvas(printRef.current, {
+      backgroundColor: '#fffef9',
+      scale: 2, // high resolution
+      useCORS: true,
+    })
+    const link = document.createElement('a')
+    link.download = `${title.replace(/\s+/g, '-').toLowerCase()}.png`
+    link.href = canvas.toDataURL('image/png')
+    link.click()
+  }
 
   if (sections.length === 0) {
     return <div className="text-gray-400 italic text-sm">No lyrics available.</div>
@@ -101,90 +116,122 @@ export default function SongViewer({ content, title, songMeta = {} }: Props) {
         }
       `}</style>
 
-      <div className="song-viewer max-w-xl mx-auto px-1">
+      <div className="max-w-xl mx-auto px-1">
 
-        {/* ── Meta row: Doh is X · Reference · Time sig ── */}
-        {(combined.key || combined.reference || combined.timeSignature) && (
-          <div className="song-meta-row flex items-center justify-between mb-6 pb-4 border-b border-gray-200">
-            <span>{combined.key ? `Doh is ${combined.key}` : ''}</span>
-            <span>{combined.reference ?? ''}</span>
-            <span>{combined.timeSignature ?? ''}</span>
-          </div>
-        )}
+        {/* ── Save as Image button ── */}
+        <div className="flex justify-end mb-4">
+          <button
+            onClick={handleSaveImage}
+            className="flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg border border-green-200 bg-green-50 text-green-700 hover:bg-green-100 hover:border-green-300 transition-all font-medium"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            Save as Image
+          </button>
+        </div>
 
-        {/* ── Writer / Singer ── */}
-        {(combined.writer || combined.singer) && (
-          <div className="song-writer-row flex gap-6 mb-5">
-            {combined.writer && (
-              <span>Words: <span className="text-gray-600">{combined.writer}</span></span>
-            )}
-            {combined.singer && (
-              <span>Music: <span className="text-gray-600">{combined.singer}</span></span>
-            )}
-          </div>
-        )}
+        {/* ── Printable area ── */}
+        <div
+          ref={printRef}
+          style={{
+            background: '#fffef9',
+            padding: '32px',
+            borderRadius: '12px',
+            fontFamily: "'Lora', Georgia, serif",
+          }}
+        >
+          {/* Title inside image */}
+          <h2 style={{ fontSize: '1.4rem', fontWeight: 700, color: '#1c1917', marginBottom: '4px' }}>
+            {title}
+          </h2>
 
-        {/* ── Sections ── */}
-        <div className="flex flex-col gap-7">
-          {sections.map((section, idx) => {
-            const verseNum = getVerseNumber(section.label)
-            const isChorus = section.type === 'chorus'
-            const isBridge = section.type === 'bridge'
-            const isVerse = section.type === 'verse'
+          {/* Song number */}
+          {combined.songNumber && (
+            <p style={{ fontSize: '0.8rem', color: '#aaa', marginBottom: '12px' }}>
+              #{combined.songNumber}
+            </p>
+          )}
 
-            // Trim trailing empty lines
-            const lines = [...section.lines]
-            while (lines.length > 0 && lines[lines.length - 1] === '') lines.pop()
+          {/* Meta row */}
+          {(combined.key || combined.reference || combined.timeSignature) && (
+            <div className="song-meta-row" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px', paddingBottom: '16px', borderBottom: '1px solid #e7e5e4' }}>
+              <span>{combined.key ? `Doh is ${combined.key}` : ''}</span>
+              <span>{combined.reference ?? ''}</span>
+              <span>{combined.timeSignature ?? ''}</span>
+            </div>
+          )}
 
-            if (isVerse) {
-              return (
-                <div key={idx} className="flex gap-2">
-                  {/* Verse number */}
-                  <span
-                    className="shrink-0 font-semibold text-gray-800 tabular-nums select-none"
-                    style={{ fontSize: '1.05rem', lineHeight: '1.75', minWidth: '1.6rem' }}
-                  >
-                    {verseNum}.
-                  </span>
-                  {/* Lines */}
-                  <div>
+          {/* Writer / Singer */}
+          {(combined.writer || combined.singer) && (
+            <div className="song-writer-row" style={{ display: 'flex', gap: '24px', marginBottom: '20px' }}>
+              {combined.writer && <span>Words: <span style={{ color: '#555' }}>{combined.writer}</span></span>}
+              {combined.singer && <span>Music: <span style={{ color: '#555' }}>{combined.singer}</span></span>}
+            </div>
+          )}
+
+          {/* Sections */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
+            {sections.map((section, idx) => {
+              const verseNum = getVerseNumber(section.label)
+              const isChorus = section.type === 'chorus'
+              const isBridge = section.type === 'bridge'
+              const isVerse = section.type === 'verse'
+
+              const lines = [...section.lines]
+              while (lines.length > 0 && lines[lines.length - 1] === '') lines.pop()
+
+              if (isVerse) {
+                return (
+                  <div key={idx} style={{ display: 'flex', gap: '8px' }}>
+                    <span style={{ flexShrink: 0, fontWeight: 600, color: '#1c1917', fontSize: '1.05rem', lineHeight: '1.75', minWidth: '1.6rem' }}>
+                      {verseNum}.
+                    </span>
+                    <div>
+                      {lines.map((line, i) =>
+                        line === ''
+                          ? <div key={i} style={{ height: '12px' }} />
+                          : <p key={i} className="song-line">{line}</p>
+                      )}
+                    </div>
+                  </div>
+                )
+              }
+
+              if (isChorus || isBridge) {
+                return (
+                  <div key={idx} style={{ paddingLeft: '40px' }}>
                     {lines.map((line, i) =>
                       line === ''
-                        ? <div key={i} className="h-3" />
+                        ? <div key={i} style={{ height: '12px' }} />
                         : <p key={i} className="song-line">{line}</p>
                     )}
                   </div>
-                </div>
-              )
-            }
+                )
+              }
 
-            if (isChorus || isBridge) {
-              // Chorus: indented block, no label shown, same font weight
               return (
-                <div key={idx} className="pl-10">
+                <div key={idx}>
+                  <p style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#aaa', marginBottom: '8px', fontWeight: 500 }}>
+                    {section.label}
+                  </p>
                   {lines.map((line, i) =>
                     line === ''
-                      ? <div key={i} className="h-3" />
+                      ? <div key={i} style={{ height: '12px' }} />
                       : <p key={i} className="song-line">{line}</p>
                   )}
                 </div>
               )
-            }
+            })}
+          </div>
 
-            // Intro / Outro / Pre-chorus / Custom — show label
-            return (
-              <div key={idx}>
-                <p className="text-xs uppercase tracking-widest text-gray-400 mb-2 font-medium">
-                  {section.label}
-                </p>
-                {lines.map((line, i) =>
-                  line === ''
-                    ? <div key={i} className="h-3" />
-                    : <p key={i} className="song-line">{line}</p>
-                )}
-              </div>
-            )
-          })}
+          {/* Watermark */}
+          <div style={{ marginTop: '32px', paddingTop: '16px', borderTop: '1px solid #e7e5e4', textAlign: 'center' }}>
+            <span style={{ fontSize: '0.7rem', color: '#ccc', letterSpacing: '0.05em' }}>
+              marapedia.vercel.app
+            </span>
+          </div>
         </div>
       </div>
     </>

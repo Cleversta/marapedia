@@ -390,6 +390,7 @@ export default function SongEditor({ content, onChange, language }: Props) {
                         onChange={e => updateSection(section.id, 'chords', e.target.value)}
                         placeholder="Am  G  C  F  |  G  Em  Am..."
                         rows={2}
+                        spellCheck={false}
                         className="chord-row w-full px-3 pb-2.5 pt-0.5 bg-transparent resize-none focus:outline-none text-[13px] leading-relaxed text-amber-800 placeholder-amber-300 tracking-wide"
                         style={{ fontFamily: "'ui-monospace', 'SFMono-Regular', monospace" }}
                       />
@@ -405,6 +406,7 @@ export default function SongEditor({ content, onChange, language }: Props) {
                       onChange={e => updateSection(section.id, 'content', e.target.value)}
                       placeholder={placeholder}
                       rows={5}
+                      spellCheck={false}
                       className="w-full px-3 pb-3 pt-0.5 bg-white resize-none focus:outline-none text-sm leading-[1.9] text-gray-700 placeholder-gray-300"
                       style={{ fontFamily: "'ui-monospace', 'SFMono-Regular', monospace" }}
                     />

@@ -102,7 +102,7 @@ export default function RichEditor({ content, onChange, placeholder = 'Write her
     content,
     onUpdate: ({ editor }) => onChange(editor.getHTML()),
     editorProps: {
-      attributes: { class: 'ProseMirror' },
+      attributes: { class: 'ProseMirror' , spellcheck: 'false',  },
     },
   })
 

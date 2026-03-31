@@ -107,7 +107,7 @@ export default function RichEditor({ content, onChange, placeholder = 'Write her
       setWordCount(text.trim() ? text.trim().split(/\s+/).length : 0)
     },
     editorProps: {
-      attributes: { class: 'ProseMirror' },
+      attributes: { class: 'ProseMirror', spellcheck: 'false', },
     },
   })
 

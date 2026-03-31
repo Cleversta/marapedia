@@ -321,13 +321,6 @@ export default function ArticleDetailClient({ article }: { article: Article }) {
               {translation?.title ?? article.slug}
             </h1>
 
-            {translation?.excerpt && (
-              <p className="text-[1.0625rem] text-stone-500 leading-relaxed mb-5 font-normal border-l-2 border-green-300 pl-4 italic"
-                style={{ fontFamily: "'Lora', Georgia, serif" }}>
-                {translation.excerpt}
-              </p>
-            )}
-
             {(typeLabel || article.source_url) && (
               <div className="flex items-center gap-2 flex-wrap mb-5">
                 {typeLabel && (
