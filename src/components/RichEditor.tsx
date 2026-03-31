@@ -4,7 +4,38 @@ import StarterKit from '@tiptap/starter-kit'
 import Image from '@tiptap/extension-image'
 import Link from '@tiptap/extension-link'
 import Placeholder from '@tiptap/extension-placeholder'
-import { useEffect, useState } from 'react'
+import TextAlign from '@tiptap/extension-text-align'
+import Color from '@tiptap/extension-color'
+import {TextStyle} from '@tiptap/extension-text-style'
+import Highlight from '@tiptap/extension-highlight'
+import { Extension } from '@tiptap/core'
+import { useEffect, useState, useRef } from 'react'
+
+// ── Inline font-size extension ────────────────────────────────────────────────
+const FontSize = Extension.create({
+  name: 'fontSize',
+  addOptions() { return { types: ['textStyle'] } },
+  addGlobalAttributes() {
+    return [{
+      types: this.options.types,
+      attributes: {
+        fontSize: {
+          default: null,
+          parseHTML: el => el.style.fontSize || null,
+          renderHTML: attrs => attrs.fontSize ? { style: `font-size: ${attrs.fontSize}` } : {},
+        },
+      },
+    }]
+  },
+  addCommands() {
+    return {
+      setFontSize: (size: string) => ({ chain }: any) =>
+        chain().setMark('textStyle', { fontSize: size }).run(),
+      unsetFontSize: () => ({ chain }: any) =>
+        chain().setMark('textStyle', { fontSize: null }).removeEmptyTextStyle().run(),
+    } as any
+  },
+})
 
 interface Props {
   content: string
@@ -12,22 +43,49 @@ interface Props {
   placeholder?: string
 }
 
+const FONT_SIZES = [
+  { label: 'Small', value: '0.8rem' },
+  { label: 'Normal', value: '1rem' },
+  { label: 'Large', value: '1.25rem' },
+  { label: 'X-Large', value: '1.6rem' },
+]
+
+const TEXT_COLORS = [
+  { label: 'Default', value: '' },
+  { label: 'Red', value: '#dc2626' },
+  { label: 'Orange', value: '#ea580c' },
+  { label: 'Yellow', value: '#ca8a04' },
+  { label: 'Green', value: '#16a34a' },
+  { label: 'Blue', value: '#2563eb' },
+  { label: 'Purple', value: '#9333ea' },
+  { label: 'Gray', value: '#6b7280' },
+]
+
+const HIGHLIGHT_COLORS = [
+  { label: 'Yellow', value: '#fef08a' },
+  { label: 'Green', value: '#bbf7d0' },
+  { label: 'Blue', value: '#bfdbfe' },
+  { label: 'Pink', value: '#fbcfe8' },
+  { label: 'None', value: '' },
+]
+
+type Dropdown = 'color' | 'highlight' | 'fontSize' | null
+
 export default function RichEditor({ content, onChange, placeholder = 'Write here...' }: Props) {
   const [showLinkInput, setShowLinkInput] = useState(false)
   const [linkUrl, setLinkUrl] = useState('')
-  const [appliedLink, setAppliedLink] = useState('') // tracks the saved URL to show as pill
+  const [appliedLink, setAppliedLink] = useState('')
   const [savedSelection, setSavedSelection] = useState<{ from: number; to: number } | null>(null)
+  const [openDropdown, setOpenDropdown] = useState<Dropdown>(null)
+  const toolbarRef = useRef<HTMLDivElement>(null)
 
   const editor = useEditor({
     immediatelyRender: false,
-// AFTER
-extensions: [
-  StarterKit.configure({
-    link: false,
-  }),
-  Image.configure({ inline: false, allowBase64: true }),
+    extensions: [
+      StarterKit.configure({ link: false }),
+      Image.configure({ inline: false, allowBase64: true }),
       Link.configure({
-        openOnClick: false, // FIX: was true — caused click to open URL instead of keeping cursor
+        openOnClick: false,
         HTMLAttributes: {
           class: 'prose-link',
           target: '_blank',
@@ -35,6 +93,11 @@ extensions: [
         },
       }),
       Placeholder.configure({ placeholder }),
+      TextAlign.configure({ types: ['heading', 'paragraph'] }),
+      TextStyle,
+      Color,
+      FontSize,
+      Highlight.configure({ multicolor: true }),
     ],
     content,
     onUpdate: ({ editor }) => onChange(editor.getHTML()),
@@ -45,46 +108,43 @@ extensions: [
 
   useEffect(() => {
     if (!editor) return
-    // Only reset editor from prop when not focused,
-    // so unsaved links are not wiped on re-renders (e.g. language tab switch).
     if (content !== editor.getHTML() && !editor.isFocused) {
       editor.commands.setContent(content)
     }
   }, [content, editor])
 
+  // Close dropdown when clicking outside the toolbar
+  useEffect(() => {
+    function handlePointerDown(e: PointerEvent) {
+      if (toolbarRef.current && !toolbarRef.current.contains(e.target as Node)) {
+        setOpenDropdown(null)
+      }
+    }
+    document.addEventListener('pointerdown', handlePointerDown)
+    return () => document.removeEventListener('pointerdown', handlePointerDown)
+  }, [])
+
+  function toggleDropdown(name: Dropdown) {
+    setOpenDropdown(prev => prev === name ? null : name)
+  }
+
   function openLinkInput() {
     if (!editor) return
-
-    // Save selection BEFORE focus is lost to the input field
     const { from, to } = editor.state.selection
-    const selectedText = editor.state.doc.textBetween(from, to)
-    console.log('[RichEditor] openLinkInput — from:', from, 'to:', to, 'text:', selectedText)
     setSavedSelection({ from, to })
-
     const existing = editor.getAttributes('link').href ?? ''
     setLinkUrl(existing)
-    setAppliedLink(existing) // pre-fill pill if editing existing link
+    setAppliedLink(existing)
     setShowLinkInput(v => !v)
   }
 
   function applyLink() {
     if (!editor) return
-
-    // DEBUG: log selection state at apply time
-    const currentSel = editor.state.selection
-    const currentText = editor.state.doc.textBetween(currentSel.from, currentSel.to)
-    console.log('[RichEditor] applyLink — currentSel empty:', currentSel.empty, 'text:', currentText)
-    console.log('[RichEditor] applyLink — savedSelection:', savedSelection)
-
     const url = linkUrl.trim()
-
-    // Build chain — start by restoring the saved selection so the link
-    // is applied to the originally selected text, not wherever focus ended up
     let chain = editor.chain().focus()
-    if (savedSelection && (savedSelection.from !== savedSelection.to)) {
+    if (savedSelection && savedSelection.from !== savedSelection.to) {
       chain = (chain as any).setTextSelection(savedSelection)
     }
-
     if (!url) {
       chain.unsetLink().run()
       setAppliedLink('')
@@ -93,14 +153,9 @@ extensions: [
     } else {
       const href = url.startsWith('http') ? url : `https://${url}`
       chain.setLink({ href }).run()
-
-      // DEBUG: log resulting HTML to confirm <a> tag was written
-      console.log('[RichEditor] applyLink — HTML after setLink:', editor.getHTML().substring(0, 300))
-
       setLinkUrl(href)
       setAppliedLink(href)
     }
-
     setSavedSelection(null)
   }
 
@@ -117,7 +172,10 @@ extensions: [
   const Divider = () => <div className="w-px self-stretch bg-gray-200 mx-0.5" />
 
   const Btn = ({ onClick, active, title, children }: {
-    onClick: () => void; active?: boolean; title: string; children: React.ReactNode
+    onClick: () => void
+    active?: boolean
+    title: string
+    children: React.ReactNode
   }) => (
     <button
       type="button"
@@ -134,20 +192,16 @@ extensions: [
   )
 
   const isLinkActive = editor.isActive('link')
-
-  // Shorten URL for display in the pill (strip https://, truncate)
-  const displayUrl = appliedLink
-    .replace(/^https?:\/\//, '')
-    .replace(/\/$/, '')
-    .slice(0, 40)
+  const displayUrl = appliedLink.replace(/^https?:\/\//, '').replace(/\/$/, '').slice(0, 40)
+  const currentColor = editor.getAttributes('textStyle').color || '#374151'
 
   return (
-    <div className="border border-gray-200 rounded-xl overflow-hidden">
+    <div className="border border-gray-200 rounded-xl overflow-visible">
 
       {/* ── Toolbar ─────────────────────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-center gap-0.5 px-2 py-1.5 bg-gray-50 border-b border-gray-200">
+      <div ref={toolbarRef} className="flex flex-wrap items-center gap-0.5 px-2 py-1.5 bg-gray-50 border-b border-gray-200 rounded-t-xl">
 
-        {/* Text style */}
+        {/* Bold / Italic / Strikethrough */}
         <Btn onClick={() => editor.chain().focus().toggleBold().run()} active={editor.isActive('bold')} title="Bold">
           <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
             <path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/><path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/>
@@ -158,6 +212,13 @@ extensions: [
             <line x1="19" y1="4" x2="10" y2="4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
             <line x1="14" y1="20" x2="5" y2="20" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
             <line x1="15" y1="4" x2="9" y2="20" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+          </svg>
+        </Btn>
+        <Btn onClick={() => editor.chain().focus().toggleStrike().run()} active={editor.isActive('strike')} title="Strikethrough">
+          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <line x1="5" y1="12" x2="19" y2="12"/>
+            <path d="M16 6C16 6 14.5 4 12 4C9.5 4 8 5.5 8 7C8 9 10 10 12 10"/>
+            <path d="M8 18C8 18 9.5 20 12 20C14.5 20 16 18.5 16 17C16 15 14 14 12 14"/>
           </svg>
         </Btn>
 
@@ -172,6 +233,144 @@ extensions: [
         </Btn>
         <Btn onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()} active={editor.isActive('heading', { level: 3 })} title="Heading 3">
           <span className="text-xs font-bold">H3</span>
+        </Btn>
+
+        <Divider />
+
+        {/* Font size dropdown */}
+        <div className="relative">
+          <button
+            type="button"
+            onMouseDown={e => { e.preventDefault(); toggleDropdown('fontSize') }}
+            title="Font size"
+            className="h-7 px-2 text-sm rounded flex items-center gap-0.5 text-gray-600 hover:bg-gray-100 transition-colors"
+          >
+            <span className="text-xs font-medium">Aa</span>
+            <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          {openDropdown === 'fontSize' && (
+            <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-1 min-w-[110px]">
+              {FONT_SIZES.map(s => (
+                <button
+                  key={s.value}
+                  type="button"
+                  onMouseDown={e => {
+                    e.preventDefault()
+                    editor.chain().focus().setFontSize(s.value).run()
+                    setOpenDropdown(null)
+                  }}
+                  className="w-full text-left px-3 py-1.5 hover:bg-gray-50 transition-colors"
+                >
+                  <span style={{ fontSize: s.value }} className="text-gray-700">{s.label}</span>
+                </button>
+              ))}
+              <button
+                type="button"
+                onMouseDown={e => {
+                  e.preventDefault()
+                  editor.chain().focus().unsetFontSize().run()
+                  setOpenDropdown(null)
+                }}
+                className="w-full text-left px-3 py-1.5 text-xs text-gray-400 hover:bg-gray-50 border-t border-gray-100 transition-colors"
+              >
+                Reset size
+              </button>
+            </div>
+          )}
+        </div>
+
+        <Divider />
+
+        {/* Text color dropdown */}
+        <div className="relative">
+          <button
+            type="button"
+            onMouseDown={e => { e.preventDefault(); toggleDropdown('color') }}
+            title="Text color"
+            className="h-7 px-2 rounded flex flex-col items-center justify-center gap-0.5 text-gray-600 hover:bg-gray-100 transition-colors"
+          >
+            <span className="text-xs font-bold leading-none" style={{ color: currentColor }}>A</span>
+            <div className="w-4 h-1 rounded-sm" style={{ background: currentColor }} />
+          </button>
+          {openDropdown === 'color' && (
+            <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-2 flex flex-wrap gap-1.5 w-[120px]">
+              {TEXT_COLORS.map(c => (
+                <button
+                  key={c.value}
+                  type="button"
+                  title={c.label}
+                  onMouseDown={e => {
+                    e.preventDefault()
+                    if (!c.value) editor.chain().focus().unsetColor().run()
+                    else editor.chain().focus().setColor(c.value).run()
+                    setOpenDropdown(null)
+                  }}
+                  className="w-6 h-6 rounded-full border-2 border-white shadow hover:scale-110 transition-transform"
+                  style={{ background: c.value || '#374151' }}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Highlight dropdown */}
+        <div className="relative">
+          <button
+            type="button"
+            onMouseDown={e => { e.preventDefault(); toggleDropdown('highlight') }}
+            title="Highlight text"
+            className={`h-7 px-2 rounded flex flex-col items-center justify-center gap-0.5 transition-colors
+              ${editor.isActive('highlight') ? 'bg-green-100 text-green-800' : 'text-gray-600 hover:bg-gray-100'}`}
+          >
+            <span className="text-xs font-bold leading-none">A</span>
+            <div className="w-4 h-1 rounded-sm bg-yellow-300" />
+          </button>
+          {openDropdown === 'highlight' && (
+            <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-2 flex flex-wrap gap-1.5 w-[100px]">
+              {HIGHLIGHT_COLORS.map(c => (
+                <button
+                  key={c.value}
+                  type="button"
+                  title={c.label}
+                  onMouseDown={e => {
+                    e.preventDefault()
+                    if (!c.value) editor.chain().focus().unsetHighlight().run()
+                    else editor.chain().focus().setHighlight({ color: c.value }).run()
+                    setOpenDropdown(null)
+                  }}
+                  className="w-6 h-6 rounded border-2 border-gray-200 shadow-sm hover:scale-110 transition-transform"
+                  style={{ background: c.value || '#ffffff' }}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        <Divider />
+
+        {/* Alignment */}
+        <Btn onClick={() => editor.chain().focus().setTextAlign('left').run()} active={editor.isActive({ textAlign: 'left' })} title="Align left">
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <line x1="3" y1="6" x2="21" y2="6" strokeWidth="2" strokeLinecap="round"/>
+            <line x1="3" y1="12" x2="15" y2="12" strokeWidth="2" strokeLinecap="round"/>
+            <line x1="3" y1="18" x2="18" y2="18" strokeWidth="2" strokeLinecap="round"/>
+          </svg>
+        </Btn>
+        <Btn onClick={() => editor.chain().focus().setTextAlign('center').run()} active={editor.isActive({ textAlign: 'center' })} title="Align center">
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <line x1="3" y1="6" x2="21" y2="6" strokeWidth="2" strokeLinecap="round"/>
+            <line x1="6" y1="12" x2="18" y2="12" strokeWidth="2" strokeLinecap="round"/>
+            <line x1="4" y1="18" x2="20" y2="18" strokeWidth="2" strokeLinecap="round"/>
+          </svg>
+        </Btn>
+        <Btn onClick={() => editor.chain().focus().setTextAlign('right').run()} active={editor.isActive({ textAlign: 'right' })} title="Align right">
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <line x1="3" y1="6" x2="21" y2="6" strokeWidth="2" strokeLinecap="round"/>
+            <line x1="9" y1="12" x2="21" y2="12" strokeWidth="2" strokeLinecap="round"/>
+            <line x1="6" y1="18" x2="21" y2="18" strokeWidth="2" strokeLinecap="round"/>
+          </svg>
         </Btn>
 
         <Divider />
@@ -206,7 +405,14 @@ extensions: [
 
         <Divider />
 
-        {/* Link button — toggles inline input */}
+        {/* Horizontal rule */}
+        <Btn onClick={() => editor.chain().focus().setHorizontalRule().run()} active={false} title="Horizontal divider">
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <line x1="3" y1="12" x2="21" y2="12" strokeWidth="2" strokeLinecap="round"/>
+          </svg>
+        </Btn>
+
+        {/* Link */}
         <Btn onClick={openLinkInput} active={isLinkActive} title={isLinkActive ? 'Edit link' : 'Insert link'}>
           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -229,16 +435,13 @@ extensions: [
         </Btn>
       </div>
 
-      {/* ── Link input bar — slides in below toolbar ─────────────────────────── */}
+      {/* ── Link input bar ───────────────────────────────────────────────────── */}
       {showLinkInput && (
         <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 border-b border-blue-100">
-          {/* Link icon */}
           <svg className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
               d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
           </svg>
-
-          {/* URL input */}
           <input
             autoFocus
             type="url"
@@ -247,17 +450,12 @@ extensions: [
             onKeyDown={e => {
               if (e.key === 'Enter') { e.preventDefault(); applyLink() }
               if (e.key === 'Escape') {
-                setShowLinkInput(false)
-                setLinkUrl('')
-                setAppliedLink('')
-                setSavedSelection(null)
+                setShowLinkInput(false); setLinkUrl(''); setAppliedLink(''); setSavedSelection(null)
               }
             }}
             placeholder="https://example.com"
             className="flex-1 text-sm bg-transparent outline-none text-blue-900 placeholder:text-blue-300 min-w-0"
           />
-
-          {/* Apply button — hidden once link is applied */}
           {!appliedLink && (
             <button
               type="button"
@@ -267,8 +465,6 @@ extensions: [
               Apply
             </button>
           )}
-
-          {/* ✅ Applied pill — shows on the right after Apply is tapped */}
           {appliedLink && (
             <a
               href={appliedLink}
@@ -284,8 +480,6 @@ extensions: [
               <span className="truncate">{displayUrl}</span>
             </a>
           )}
-
-          {/* Remove button */}
           {isLinkActive && (
             <button
               type="button"
@@ -295,16 +489,11 @@ extensions: [
               Remove
             </button>
           )}
-
-          {/* Close button */}
           <button
             type="button"
             onMouseDown={e => {
               e.preventDefault()
-              setShowLinkInput(false)
-              setLinkUrl('')
-              setAppliedLink('')
-              setSavedSelection(null)
+              setShowLinkInput(false); setLinkUrl(''); setAppliedLink(''); setSavedSelection(null)
             }}
             className="text-gray-400 hover:text-gray-600 transition-colors ml-1 flex-shrink-0"
           >
@@ -315,12 +504,11 @@ extensions: [
         </div>
       )}
 
-      {/* ── Editor area ───────────────────────────────────────────────────────── */}
+      {/* ── Editor area ──────────────────────────────────────────────────────── */}
       <div className="px-4 py-3 min-h-[200px] bg-white">
         <EditorContent editor={editor} />
       </div>
 
-      {/* Global styles for editor content */}
       <style>{`
         .ProseMirror { outline: none; min-height: 180px; }
         .ProseMirror p { margin: 0 0 0.75rem; line-height: 1.7; font-size: 0.9375rem; color: #374151; }
@@ -334,9 +522,12 @@ extensions: [
         .ProseMirror blockquote { border-left: 3px solid #d1fae5; padding-left: 1rem; margin: 0.75rem 0; color: #6b7280; font-style: italic; }
         .ProseMirror a, .prose-link { color: #15803d; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
         .ProseMirror a:hover { color: #166534; }
+        .ProseMirror hr { border: none; border-top: 2px solid #e5e7eb; margin: 1.5rem 0; }
         .ProseMirror p.is-editor-empty:first-child::before { content: attr(data-placeholder); color: #d1d5db; pointer-events: none; float: left; height: 0; }
         .ProseMirror strong { font-weight: 700; }
         .ProseMirror em { font-style: italic; }
+        .ProseMirror s { text-decoration: line-through; }
+        .ProseMirror mark { border-radius: 2px; padding: 0 2px; }
       `}</style>
     </div>
   )

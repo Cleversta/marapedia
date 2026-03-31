@@ -307,7 +307,7 @@ export default function CreateArticlePage() {
             </div>
           )}
           {editorType === 'poem' && (
-            <PoemEditor content={current.content} onChange={val => updateLang(currentLang, 'content', val)} language={currentLang} />
+            <PoemEditor content={current.content} onChange={val => updateLang(currentLang, 'content', val)}/>
           )}
           {editorType === 'song' && (
             <SongEditor content={current.content} onChange={val => updateLang(currentLang, 'content', val)} language={currentLang} />

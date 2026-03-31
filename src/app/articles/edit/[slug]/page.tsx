@@ -360,7 +360,7 @@ export default function EditArticlePage() {
             <PoemEditor
               content={current.content}
               onChange={val => updateLang(currentLang, 'content', val)}
-              language={currentLang}
+              
             />
           )}
           {editorType === 'song' && (
