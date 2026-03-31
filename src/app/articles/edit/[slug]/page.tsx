@@ -28,12 +28,13 @@ export default function EditArticlePage() {
   const [user, setUser] = useState<any>(null)
   const [profile, setProfile] = useState<any>(null)
   const [article, setArticle] = useState<Article | null>(null)
-  const [currentLang, setCurrentLang] = useState<Language>((searchParams.get('lang') as Language) ?? 'english')
+  const [loaded, setLoaded] = useState(false)
+  const [currentLang, setCurrentLang] = useState<Language>((searchParams.get('lang') as Language) ?? 'mara')
   const [category, setCategory] = useState<Category>('history')
   const [articleType, setArticleType] = useState<string>('')
   const [images, setImages] = useState<UploadedImage[]>([])
   const [featured, setFeatured] = useState(false)
-  const [sourceUrl, setSourceUrl] = useState('') // ← NEW
+  const [sourceUrl, setSourceUrl] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -66,7 +67,7 @@ export default function EditArticlePage() {
     setCategory(data.category)
     setFeatured(data.featured ?? false)
     setArticleType(data.article_type ?? '')
-    setSourceUrl(data.source_url ?? '') // ← NEW
+    setSourceUrl(data.source_url ?? '')
 
     const newLangs = {
       mara: { title: '', content: '' }, english: { title: '', content: '' },
@@ -81,6 +82,8 @@ export default function EditArticlePage() {
       .from('images').select('url, caption').eq('article_id', data.id)
       .order('created_at', { ascending: true })
     setImages((existingImages ?? []).map(img => ({ url: img.url, caption: img.caption ?? '' })))
+
+    setLoaded(true)
   }
 
   function updateLang(lang: Language, field: 'title' | 'content', value: string) {
@@ -104,7 +107,6 @@ export default function EditArticlePage() {
       return
     }
 
-    // Save revision of current translation before overwriting
     const existing = article.article_translations?.find(t => t.language === currentLang)
     if (existing && langs[currentLang].title) {
       await supabase.from('article_revisions').insert({
@@ -113,17 +115,15 @@ export default function EditArticlePage() {
       })
     }
 
-    // Update article core fields
     await supabase.from('articles').update({
       category,
       article_type: articleType || null,
       thumbnail_url: images[0]?.url ?? null,
       featured,
-      source_url: sourceUrl.trim() || null, // ← NEW
+      source_url: sourceUrl.trim() || null,
       updated_at: new Date().toISOString(),
     }).eq('id', article.id)
 
-    // Replace images
     await supabase.from('images').delete().eq('article_id', article.id)
     if (images.length > 0) {
       await supabase.from('images').insert(
@@ -136,7 +136,6 @@ export default function EditArticlePage() {
       )
     }
 
-    // Upsert translations
     const filled = (Object.keys(langs) as Language[])
       .filter(l => langs[l].title.trim() && langs[l].content.trim())
 
@@ -151,16 +150,13 @@ export default function EditArticlePage() {
       }, { onConflict: 'article_id,language' })
     }
 
-    // Bust the Next.js cache so Cloudflare gets fresh content on next request
     await fetch('/api/revalidate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ slug }),
     })
-
-    setSuccess('Article saved successfully!')
     setSaving(false)
-    setTimeout(() => setSuccess(''), 3000)
+    router.push(`/articles/${slug}`)
   }
 
   if (!article) return <div className="text-center py-16 text-gray-400">Loading...</div>
@@ -280,7 +276,6 @@ export default function EditArticlePage() {
         </div>
 
         {/* ── Source URL ───────────────────────────────────────────────────── */}
-        {/* NEW: paste any URL here — shown as a pill on the detail page */}
         <div className="px-5 py-3 border-b border-gray-100 flex items-center gap-3">
           <svg className="w-3.5 h-3.5 text-gray-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -348,27 +343,36 @@ export default function EditArticlePage() {
             .tall-editor .ProseMirror { min-height: 500px !important; }
             .tall-editor .px-4.py-3 { min-height: 540px !important; }
           `}</style>
-          {editorType === 'rich' && (
-            <div className="tall-editor">
-              <RichEditor
-                content={current.content}
-                onChange={val => updateLang(currentLang, 'content', val)}
-              />
+
+          {!loaded ? (
+            <div className="flex items-center justify-center py-16 text-gray-300 text-sm">
+              Loading content...
             </div>
-          )}
-          {editorType === 'poem' && (
-            <PoemEditor
-              content={current.content}
-              onChange={val => updateLang(currentLang, 'content', val)}
-              
-            />
-          )}
-          {editorType === 'song' && (
-            <SongEditor
-              content={current.content}
-              onChange={val => updateLang(currentLang, 'content', val)}
-              language={currentLang}
-            />
+          ) : (
+            <>
+              {editorType === 'rich' && (
+                <div className="tall-editor">
+                  <RichEditor
+                    content={current.content}
+                    onChange={val => updateLang(currentLang, 'content', val)}
+                  />
+                </div>
+              )}
+              {editorType === 'poem' && (
+                <PoemEditor
+                  content={current.content}
+                  onChange={val => updateLang(currentLang, 'content', val)}
+                />
+              )}
+              {editorType === 'song' && (
+                <SongEditor
+                  key={currentLang}
+                  content={current.content}
+                  onChange={val => updateLang(currentLang, 'content', val)}
+                  language={currentLang}
+                />
+              )}
+            </>
           )}
         </div>
 

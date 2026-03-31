@@ -265,16 +265,6 @@ export default function ArticleDetailClient({ article }: { article: Article }) {
               {article.status !== 'published' && (
                 <span className="text-xs px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200 font-medium">Draft</span>
               )}
-              {article.source_url && (
-                <a href={article.source_url} target="_blank" rel="noopener noreferrer"
-                  className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-full bg-stone-100 border border-stone-200 text-stone-500 hover:bg-stone-200 hover:text-stone-700 transition-all font-medium max-w-[160px]"
-                  title={article.source_url}>
-                  <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                  </svg>
-                  <span className="truncate">{sourceUrlDisplay}</span>
-                </a>
-              )}
               {isOwner && (
                 <Link href={`/articles/edit/${article.slug}`}
                   className="flex items-center gap-1 text-xs px-3 py-1.5 bg-white border border-stone-200 text-stone-500 rounded-lg hover:border-green-300 hover:text-green-700 transition-all font-medium">
