@@ -3,18 +3,25 @@ import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { timeAgo, getPreferredTranslation } from '@/lib/utils'
 import ArticleCard from '@/components/ArticleCard'
+import { SITE_URL, SITE_NAME, SITE_DESCRIPTION } from '@/lib/config'
 import type { Article } from '@/types'
 
 export const revalidate = 600
 
 export const metadata: Metadata = {
-  title: 'Marapedia — The Free Mara Encyclopedia',
-  description: 'A community-built encyclopedia preserving the history, culture, language, songs, and traditions of the Mara people — from Maraland to the world.',
+  title: SITE_NAME,
+  description: SITE_DESCRIPTION,
   openGraph: {
-    title: 'Marapedia — The Free Mara Encyclopedia',
-    description: 'A community-built encyclopedia for the Mara people.',
-    url: 'https://marapedia.org',
-    images: [{ url: '/og-image.png', width: 1200, height: 630 }],
+    title: SITE_NAME,
+    description: SITE_DESCRIPTION,
+    url: SITE_URL,
+    images: [{ url: `${SITE_URL}/og-image.png`, width: 1200, height: 630, alt: SITE_NAME }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: SITE_NAME,
+    description: SITE_DESCRIPTION,
+    images: [`${SITE_URL}/og-image.png`],
   },
 }
 
@@ -55,6 +62,7 @@ async function getMostViewedArticles(): Promise<Article[]> {
     .limit(6)
   return (data ?? []) as unknown as Article[]
 }
+
 async function getStats() {
   const [{ count: articleCount }, { count: userCount }] = await Promise.all([
     supabase.from('articles').select('*', { count: 'exact', head: true }).eq('status', 'published'),
@@ -81,12 +89,12 @@ export default async function HomePage() {
           __html: JSON.stringify({
             '@context': 'https://schema.org',
             '@type': 'WebSite',
-            name: 'Marapedia',
-            url: 'https://marapedia.org',
-            description: 'A community-built encyclopedia for the Mara people.',
+            name: SITE_NAME,
+            url: SITE_URL,
+            description: SITE_DESCRIPTION,
             potentialAction: {
               '@type': 'SearchAction',
-              target: 'https://marapedia.org/search?q={search_term_string}',
+              target: `${SITE_URL}/search?q={search_term_string}`,
               'query-input': 'required name=search_term_string',
             },
           }),
@@ -97,7 +105,7 @@ export default async function HomePage() {
         <div className="max-w-7xl mx-auto px-4 py-12 md:py-16">
           <div className="max-w-2xl mx-auto text-center">
             <p className="text-xs uppercase tracking-widest text-green-700 font-medium mb-3">
-              The Free Mara Encyclopedia
+              The Free Mara People Encyclopedia
             </p>
             <h1 className="font-display text-4xl md:text-5xl font-bold text-green-950 mb-4 leading-tight">
               Preserving Mara<br />History & Culture
@@ -141,8 +149,11 @@ export default async function HomePage() {
               <div className="bg-white border border-gray-200 rounded-xl overflow-hidden hover:border-green-300 hover:shadow-sm transition-all">
                 {featured.thumbnail_url && (
                   <div className="h-56 overflow-hidden">
-                    <img src={featured.thumbnail_url} alt={featuredTranslation.title ?? ''}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                    <img
+                      src={featured.thumbnail_url}
+                      alt={featuredTranslation.title ?? ''}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
                   </div>
                 )}
                 <div className="p-5 text-center">
@@ -171,8 +182,10 @@ export default async function HomePage() {
             {recent.length === 0 ? (
               <div className="text-center py-12 bg-white border border-dashed border-gray-300 rounded-xl">
                 <p className="text-gray-400 mb-3">No articles yet. Be the first to contribute!</p>
-                <Link href="/articles/create"
-                  className="text-sm px-4 py-2 bg-green-700 text-white rounded-lg hover:bg-green-800 transition-colors">
+                <Link
+                  href="/articles/create"
+                  className="text-sm px-4 py-2 bg-green-700 text-white rounded-lg hover:bg-green-800 transition-colors"
+                >
                   Write First Article
                 </Link>
               </div>

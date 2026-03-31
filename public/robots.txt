@@ -3,7 +3,10 @@ Allow: /
 Disallow: /admin
 Disallow: /editor
 Disallow: /profile
+Disallow: /login
+Disallow: /register
 Disallow: /articles/create
-Disallow: /articles/edit
+Disallow: /articles/edit/
+Disallow: /api/
 
-Sitemap: https://marapedia.org/sitemap.xml
+Sitemap: https://marapedia.vercel.app/sitemap.xml
