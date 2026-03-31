@@ -19,6 +19,9 @@ export const metadata: Metadata = {
   authors: [{ name: 'Marapedia Community' }],
   creator: 'Marapedia',
   publisher: 'Marapedia',
+  verification: {
+    google: 'UXpWjnhKCW2-9v8iJUC3NVf7XYKbHflTq_jlwOaWyAM',
+  },
   openGraph: {
     type: 'website',
     locale: 'en_US',
