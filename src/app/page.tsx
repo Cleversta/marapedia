@@ -1,3 +1,4 @@
+import { unstable_cache } from 'next/cache'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
@@ -31,45 +32,61 @@ const ARTICLE_FIELDS = `
   article_translations(id, article_id, language, title, excerpt, content)
 `
 
-async function getFeaturedArticle(): Promise<Article | null> {
-  const { data } = await supabase
-    .from('articles')
-    .select(ARTICLE_FIELDS)
-    .eq('status', 'published')
-    .eq('featured', true)
-    .order('updated_at', { ascending: false })
-    .limit(1)
-    .single()
-  return data as unknown as Article | null
-}
+const getFeaturedArticle = unstable_cache(
+  async (): Promise<Article | null> => {
+    const { data } = await supabase
+      .from('articles')
+      .select(ARTICLE_FIELDS)
+      .eq('status', 'published')
+      .eq('featured', true)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .single()
+    return data as unknown as Article | null
+  },
+  ['home-featured'],
+  { revalidate: 600, tags: ['article'] }
+)
 
-async function getRecentArticles(): Promise<Article[]> {
-  const { data } = await supabase
-    .from('articles')
-    .select(ARTICLE_FIELDS)
-    .eq('status', 'published')
-    .order('updated_at', { ascending: false })
-    .limit(6)
-  return (data ?? []) as unknown as Article[]
-}
+const getRecentArticles = unstable_cache(
+  async (): Promise<Article[]> => {
+    const { data } = await supabase
+      .from('articles')
+      .select(ARTICLE_FIELDS)
+      .eq('status', 'published')
+      .order('updated_at', { ascending: false })
+      .limit(6)
+    return (data ?? []) as unknown as Article[]
+  },
+  ['home-recent'],
+  { revalidate: 600, tags: ['article'] }
+)
 
-async function getMostViewedArticles(): Promise<Article[]> {
-  const { data } = await supabase
-    .from('articles')
-    .select(ARTICLE_FIELDS)
-    .eq('status', 'published')
-    .order('view_count', { ascending: false })
-    .limit(6)
-  return (data ?? []) as unknown as Article[]
-}
+const getMostViewedArticles = unstable_cache(
+  async (): Promise<Article[]> => {
+    const { data } = await supabase
+      .from('articles')
+      .select(ARTICLE_FIELDS)
+      .eq('status', 'published')
+      .order('view_count', { ascending: false })
+      .limit(6)
+    return (data ?? []) as unknown as Article[]
+  },
+  ['home-most-viewed'],
+  { revalidate: 600, tags: ['article'] }
+)
 
-async function getStats() {
-  const [{ count: articleCount }, { count: userCount }] = await Promise.all([
-    supabase.from('articles').select('*', { count: 'exact', head: true }).eq('status', 'published'),
-    supabase.from('profiles').select('*', { count: 'exact', head: true }),
-  ])
-  return { articles: articleCount ?? 0, users: userCount ?? 0 }
-}
+const getStats = unstable_cache(
+  async () => {
+    const [{ count: articleCount }, { count: userCount }] = await Promise.all([
+      supabase.from('articles').select('*', { count: 'exact', head: true }).eq('status', 'published'),
+      supabase.from('profiles').select('*', { count: 'exact', head: true }),
+    ])
+    return { articles: articleCount ?? 0, users: userCount ?? 0 }
+  },
+  ['home-stats'],
+  { revalidate: 600, tags: ['article'] }
+)
 
 export default async function HomePage() {
   const [featured, recent, mostViewed, stats] = await Promise.all([

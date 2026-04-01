@@ -9,8 +9,6 @@ import PoemViewer from '@/components/PoemViewer'
 import ShareButtons from '@/components/ShareButton'
 import type { Article } from '@/types'
 
-// Defined outside the component so the string is stable between server and client,
-// preventing the React hydration mismatch warning.
 const ARTICLE_STYLES = `
 @import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap');
 
@@ -184,12 +182,9 @@ export default function ArticleDetailClient({ article }: { article: Article }) {
       )
     }
 
-    const type = article.article_type ??
-      (article.category === 'songs' ? 'song' :
-       article.category === 'poems' ? 'poem' : null)
-
-    if (type === 'song') return <SongViewer content={translation.content} title={translation.title ?? ''} />
-    if (type === 'poem') return <PoemViewer content={translation.content} />
+    // ✅ Use category to decide renderer, not article_type
+    if (article.category === 'songs') return <SongViewer content={translation.content} title={translation.title ?? ''} />
+    if (article.category === 'poems') return <PoemViewer content={translation.content} />
 
     return <div className="article-body" dangerouslySetInnerHTML={{ __html: translation.content }} />
   }
