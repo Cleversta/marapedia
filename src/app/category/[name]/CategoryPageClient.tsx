@@ -28,7 +28,10 @@ export default function CategoryPageClient({ articles, category }: Props) {
   const filtered =
     activeType === 'all'
       ? articles
-      : articles.filter(a => (a as any).article_type === activeType)
+      : articles.filter(a => {
+          const t = (a as any).article_type ?? 'other'
+          return t === activeType
+        })
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
