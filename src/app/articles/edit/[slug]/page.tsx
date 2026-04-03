@@ -20,6 +20,7 @@ function getEditorType(category: Category): 'rich' | 'poem' | 'song' {
   return 'rich'
 }
 
+
 export default function EditArticlePage() {
   const { slug } = useParams()
   const searchParams = useSearchParams()
