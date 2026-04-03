@@ -24,9 +24,10 @@ const getArticle = unstable_cache(
 
 export async function GET(
   req: Request,
-  { params }: { params: { slug: string } }
+  { params }: { params: Promise<{ slug: string }> }
 ) {
-  const article = await getArticle(params.slug)
+  const { slug } = await params
+  const article = await getArticle(slug)
   if (!article) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   return NextResponse.json(article, {
