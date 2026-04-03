@@ -1,7 +1,7 @@
 import { unstable_cache } from 'next/cache'
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { supabase } from '@/lib/supabase'
+import { supabaseServer as supabase } from '@/lib/supabase-server'
 import { timeAgo, getPreferredTranslation } from '@/lib/utils'
 import ArticleCard from '@/components/ArticleCard'
 import { SITE_URL, SITE_NAME, SITE_DESCRIPTION } from '@/lib/config'

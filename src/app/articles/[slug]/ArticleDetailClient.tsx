@@ -118,11 +118,20 @@ export default function ArticleDetailClient({ article }: { article: Article }) {
   const router = useRouter()
   const [currentLang, setCurrentLang] = useState('mara')
   const [user, setUser] = useState<any>(null)
+  const [profile, setProfile] = useState<any>(null)
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setUser(session?.user ?? null)
+      if (session?.user) {
+        const { data } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', session.user.id)
+          .single()
+        setProfile(data)
+      }
     })
   }, [])
 
@@ -163,6 +172,8 @@ export default function ArticleDetailClient({ article }: { article: Article }) {
   const availableLangs = translations.map(t => t.language)
   const translation = translations.find(t => t.language === currentLang) ?? translations[0]
   const isOwner = user?.id === article.author_id
+  const isAdmin = profile?.role === 'admin'
+  const canEdit = isOwner || isAdmin  // ← admin can edit any article
   const allImages = allImagesForLightbox()
   const typeLabel = getArticleTypeLabel(article.category, article.article_type)
 
@@ -182,7 +193,6 @@ export default function ArticleDetailClient({ article }: { article: Article }) {
       )
     }
 
-    // ✅ Use category to decide renderer, not article_type
     if (article.category === 'songs') return <SongViewer content={translation.content} title={translation.title ?? ''} />
     if (article.category === 'poems') return <PoemViewer content={translation.content} />
 
@@ -260,7 +270,12 @@ export default function ArticleDetailClient({ article }: { article: Article }) {
               {article.status !== 'published' && (
                 <span className="text-xs px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200 font-medium">Draft</span>
               )}
-              {isOwner && (
+              {isAdmin && !isOwner && (
+                <span className="text-xs px-2 py-0.5 rounded-full bg-purple-50 text-purple-600 border border-purple-200 font-medium">
+                  Admin
+                </span>
+              )}
+              {canEdit && (
                 <Link href={`/articles/edit/${article.slug}`}
                   className="flex items-center gap-1 text-xs px-3 py-1.5 bg-white border border-stone-200 text-stone-500 rounded-lg hover:border-green-300 hover:text-green-700 transition-all font-medium">
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
