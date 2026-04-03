@@ -1,6 +1,6 @@
 import { unstable_cache } from 'next/cache'
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { supabaseServer } from '@/lib/supabase-server'
 
 const FIELDS = `
   id, slug, category, article_type, status, featured, thumbnail_url,
@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
 
   const fetchData = unstable_cache(
     async () => {
-      let query = supabase
+      let query = supabaseServer
         .from('articles')
         .select(FIELDS)
         .eq('status', 'published')

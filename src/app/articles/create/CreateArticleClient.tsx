@@ -83,10 +83,15 @@ export default function CreateArticlePage() {
     setSaving(true)
     setError('')
 
-    const baseTitle = langs['english'].title || langs[filled[0]].title
-    let slug = createSlug(baseTitle)
-    const { data: existing } = await supabase.from('articles').select('id').eq('slug', slug).single()
-    if (existing) slug = `${slug}-${Date.now()}`
+const baseTitle = langs['english'].title || langs['mizo'].title || langs['mara'].title
+let slug = baseTitle.trim() ? createSlug(baseTitle) : ''
+
+if (!slug || slug.length < 2) {
+  slug = `${category}-${Date.now()}`
+}
+
+const { data: existing } = await supabase.from('articles').select('id').eq('slug', slug).single()
+if (existing) slug = `${slug}-${Date.now()}`
 
     const { data: article, error: articleError } = await supabase
       .from('articles')

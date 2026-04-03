@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import type { Language } from '@/types'
 
 interface Section {
@@ -43,7 +43,6 @@ function getSectionConfig(type: string) {
 
 function serialize(sections: Section[], meta: SongMeta): string {
   const metaComment = `<!--meta:${JSON.stringify(meta)}-->`
-  // ✅ No longer filters out empty sections — preserves structure even when empty
   const sectionsHtml = sections
     .map(s =>
       `<div class="song-section" data-type="${s.type}" data-label="${s.label}" data-chords="${s.chords}"><h4>[${s.label}]</h4>${
@@ -54,7 +53,6 @@ function serialize(sections: Section[], meta: SongMeta): string {
   return metaComment + '\n' + sectionsHtml
 }
 
-// ✅ Regex-based — no DOMParser, works on server and client
 function htmlToSections(html: string): Section[] {
   if (!html || html === '<p></p>') return []
   try {
@@ -71,7 +69,6 @@ function htmlToSections(html: string): Section[] {
       const label = divTag.match(/data-label="([^"]*)"/)?.[1] ?? 'Verse'
       const chords = divTag.match(/data-chords="([^"]*)"/)?.[1] ?? ''
 
-      // Strip h4, then parse <p> lines
       const bodyHtml = inner.replace(/<h4[^>]*>[\s\S]*?<\/h4>/g, '')
       const lines: string[] = []
       const pRegex = /<p>([\s\S]*?)<\/p>/g
@@ -119,7 +116,6 @@ const LANG_PLACEHOLDERS: Record<Language, string> = {
 
 export default function SongEditor({ content, onChange, language }: Props) {
   const [sections, setSections] = useState<Section[]>(() => {
-    // ✅ No longer guarded by typeof window — regex parser works everywhere
     const parsed = htmlToSections(content)
     return parsed.length > 0 ? parsed : [
       { id: makeId(), type: 'verse',  label: 'Verse 1', content: '', chords: '' },
@@ -128,13 +124,23 @@ export default function SongEditor({ content, onChange, language }: Props) {
   })
 
   const [meta, setMeta] = useState<SongMeta>(() => htmlToMeta(content))
+  const isFirstRender = useRef(true)
 
   const [showAddMenu, setShowAddMenu] = useState(false)
   const [showMeta, setShowMeta] = useState(false)
-  const [showChords, setShowChords] = useState(true)
+  const [showChords, setShowChords] = useState(false) // ← default off
   const [expandedSections, setExpandedSections] = useState<Set<string>>(
     () => new Set(sections.map(s => s.id))
   )
+
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false
+      if (!content || content === '<p></p>') {
+        onChange(serialize(sections, meta))
+      }
+    }
+  }, [])
 
   function toggleSection(id: string) {
     setExpandedSections(prev => {
