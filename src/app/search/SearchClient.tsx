@@ -1,7 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
 import ArticleCard from '@/components/ArticleCard'
 import type { Article } from '@/types'
 
@@ -22,27 +21,15 @@ export default function SearchClient() {
     if (!term.trim()) return
     setLoading(true)
     setSearched(true)
-
-    const { data } = await supabase
-      .from('article_translations')
-      .select('article_id, title, excerpt, language')
-      .or(`title.ilike.%${term}%,content.ilike.%${term}%`)
-
-    if (!data || data.length === 0) {
+    try {
+      const res = await fetch(`/api/articles/search?q=${encodeURIComponent(term.trim())}`)
+      const data: Article[] = await res.json()
+      setResults(data)
+    } catch {
       setResults([])
+    } finally {
       setLoading(false)
-      return
     }
-
-    const ids = Array.from(new Set(data.map(d => d.article_id)))
-    const { data: articles } = await supabase
-      .from('articles')
-      .select('*, profiles(*), article_translations(*)')
-      .in('id', ids)
-      .eq('status', 'published')
-
-    setResults(articles ?? [])
-    setLoading(false)
   }
 
   function handleSearch(e: React.FormEvent) {

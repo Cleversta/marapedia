@@ -1,3 +1,4 @@
+//lib/api/upload/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { uploadToR2 } from '@/lib/r2'
 import sharp from 'sharp'

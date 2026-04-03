@@ -1,3 +1,4 @@
+//lib/api/articles/route.ts
 import { unstable_cache } from 'next/cache'
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseServer } from '@/lib/supabase-server'

@@ -1,3 +1,4 @@
+//lib/api/view/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseServer } from '@/lib/supabase-server'
 
