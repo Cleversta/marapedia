@@ -5,17 +5,28 @@ export async function GET(req: NextRequest) {
   const q = req.nextUrl.searchParams.get('q') ?? ''
   if (!q.trim()) return NextResponse.json([])
 
-  // Step 1: find matching translation IDs
   const { data: matches } = await supabaseServer
     .from('article_translations')
-    .select('article_id')
+    .select('article_id, title')
     .or(`title.ilike.%${q}%,content.ilike.%${q}%,excerpt.ilike.%${q}%`)
 
   if (!matches?.length) return NextResponse.json([])
 
-  const ids = Array.from(new Set(matches.map(m => m.article_id)))
+  // Rank: title starts with query > title contains query > content match
+  const scored = new Map<string, number>()
+  for (const m of matches) {
+    const title = (m.title ?? '').toLowerCase()
+    const query = q.toLowerCase()
+    const current = scored.get(m.article_id) ?? 0
+    let score = 0
+    if (title.startsWith(query)) score = 3       // "mara..." → top
+    else if (title.includes(query)) score = 2    // "...mara..." → second
+    else score = 1                                // content/excerpt match → last
+    if (score > current) scored.set(m.article_id, score)
+  }
 
-  // Step 2: fetch full articles by those IDs
+  const ids = Array.from(scored.keys())
+
   const { data, error } = await supabaseServer
     .from('articles')
     .select(`
@@ -30,7 +41,12 @@ export async function GET(req: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  return NextResponse.json(data ?? [], {
+  // Sort by score descending
+  const sorted = (data ?? []).sort((a, b) => {
+    return (scored.get(b.id) ?? 0) - (scored.get(a.id) ?? 0)
+  })
+
+  return NextResponse.json(sorted, {
     headers: { 'Cache-Control': 'no-store' }
   })
 }
