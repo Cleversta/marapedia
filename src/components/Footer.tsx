@@ -1,3 +1,4 @@
+// src/components/Footer.tsx
 import Link from 'next/link'
 
 const FOOTER_LINKS = {
