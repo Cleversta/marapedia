@@ -207,9 +207,11 @@ export default async function HomePage() {
                 </Link>
               </div>
             ) : (
-              <div className="flex flex-col gap-4">
-                {recent.map(article => <ArticleCard key={article.id} article={article} />)}
-              </div>
+<div className="flex flex-col gap-4">
+  {mostViewed
+    .filter(article => article.id !== featured?.id)
+    .map(article => <ArticleCard key={article.id} article={article} />)}
+</div>
             )}
           </div>
           <div>

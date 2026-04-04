@@ -15,12 +15,11 @@ export default function Navbar() {
   const [searchQuery, setSearchQuery] = useState('')
   const [searchFocused, setSearchFocused] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [shortcutLabel, setShortcutLabel] = useState('Ctrl K') // ✅ Fix: default same on server & client
+  const [shortcutLabel, setShortcutLabel] = useState('Ctrl K')
   const menuRef = useRef<HTMLDivElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    // ✅ Fix: detect Mac only on client after mount
     if (/Mac|iPhone|iPad/.test(navigator.platform)) {
       setShortcutLabel('⌘K')
     }
@@ -346,25 +345,25 @@ export default function Navbar() {
 
           {/* ── Category pill tabs — desktop ── */}
           <nav
-            className="hidden md:flex items-center gap-1.5 overflow-x-auto scrollbar-hide border-t border-gray-100 py-2.5 -mx-4 px-4"
+            className="hidden md:flex items-center gap-1.5 overflow-x-auto scrollbar-hide border-t border-gray-200 py-2.5 -mx-4 px-4"
             aria-label="Category navigation"
           >
             {CATEGORIES.map((cat, i) => (
               <Link
                 key={cat.value}
                 href={catHref(cat)}
-                className={`flex items-center gap-1.5 text-[12px] px-3 py-1.5 whitespace-nowrap
-                  rounded-full border font-medium shrink-0 transition-all duration-150
+                className={`flex items-center gap-1.5 text-[12.5px] px-3.5 py-1.5 whitespace-nowrap
+                  rounded-full border-2 font-semibold shrink-0 transition-all duration-150 active:scale-95
                   ${isCatActive(cat)
-                    ? 'border-green-700 bg-green-700 text-white shadow-sm shadow-green-900/20'
-                    : 'border-gray-200 bg-white text-gray-500 hover:border-green-300 hover:text-green-700 hover:bg-green-50'
+                    ? 'border-green-800 bg-gradient-to-b from-green-700 to-green-800 text-white shadow-md shadow-green-900/30 -translate-y-px'
+                    : 'border-gray-400 bg-white text-slate-700 hover:border-green-600 hover:text-green-800 hover:bg-green-50 hover:shadow-sm active:bg-green-100'
                   }`}
               >
-                <span className="text-sm">{cat.icon}</span>
+                <span className="text-sm leading-none">{cat.icon}</span>
                 <span>{cat.label}</span>
                 {i === 0 && (
-                  <span className={`ml-0.5 text-[9px] border rounded px-1 py-0.5 leading-none select-none
-                    ${isCatActive(cat) ? 'border-green-500 opacity-70' : 'border-gray-200 text-gray-400'}`}>
+                  <span className={`ml-0.5 text-[9px] border rounded px-1 py-0.5 leading-none select-none font-mono font-normal
+                    ${isCatActive(cat) ? 'border-green-500/60 text-green-200' : 'border-gray-400 text-gray-500'}`}>
                     Tab
                   </span>
                 )}
@@ -372,20 +371,20 @@ export default function Navbar() {
             ))}
           </nav>
 
-          {/* ── Category pill tabs — mobile (below top bar, always visible) ── */}
+          {/* ── Category pill tabs — mobile ── */}
           <nav
-            className="md:hidden flex items-center gap-1.5 overflow-x-auto scrollbar-hide border-t border-gray-100 py-2 -mx-4 px-4"
+            className="md:hidden flex items-center gap-1.5 overflow-x-auto scrollbar-hide border-t border-gray-200 py-2 -mx-4 px-4"
             aria-label="Category navigation mobile"
           >
             {CATEGORIES.map(cat => (
               <Link
                 key={cat.value}
                 href={catHref(cat)}
-                className={`flex items-center gap-1 text-[11px] px-2.5 py-1.5 whitespace-nowrap
-                  rounded-full border font-medium shrink-0 transition-all duration-150
+                className={`flex items-center gap-1 text-[11.5px] px-3 py-1.5 whitespace-nowrap
+                  rounded-full border-2 font-semibold shrink-0 transition-all duration-150 active:scale-95
                   ${isCatActive(cat)
-                    ? 'border-green-700 bg-green-700 text-white shadow-sm shadow-green-900/20'
-                    : 'border-gray-200 bg-white text-gray-500 hover:border-green-300 hover:text-green-700 hover:bg-green-50'
+                    ? 'border-green-800 bg-gradient-to-b from-green-700 to-green-800 text-white shadow-md shadow-green-900/30 -translate-y-px'
+                    : 'border-gray-400 bg-white text-slate-700 hover:border-green-600 hover:text-green-800 hover:bg-green-50 active:bg-green-100'
                   }`}
               >
                 <span>{cat.icon}</span>
