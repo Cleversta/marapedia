@@ -125,9 +125,22 @@ export default function EditArticlePage() {
       updated_at: new Date().toISOString(),
     }).eq('id', article.id)
 
-    await supabase.from('images').delete().eq('article_id', article.id)
+    // FIX: Check delete error before inserting to prevent silent-fail duplication.
+    // If delete fails (e.g. RLS mismatch), we must NOT proceed with the insert —
+    // otherwise images accumulate on every save (1 → 2 → 4 → …).
+    const { error: deleteError } = await supabase
+      .from('images')
+      .delete()
+      .eq('article_id', article.id)
+
+    if (deleteError) {
+      setError('Failed to update images: ' + deleteError.message)
+      setSaving(false)
+      return
+    }
+
     if (images.length > 0) {
-      await supabase.from('images').insert(
+      const { error: insertError } = await supabase.from('images').insert(
         images.map(img => ({
           article_id: article.id,
           url: img.url,
@@ -135,6 +148,11 @@ export default function EditArticlePage() {
           uploaded_by: user.id,
         }))
       )
+      if (insertError) {
+        setError('Failed to save images: ' + insertError.message)
+        setSaving(false)
+        return
+      }
     }
 
     const filled = (Object.keys(langs) as Language[])
@@ -248,32 +266,21 @@ export default function EditArticlePage() {
         )}
 
         {/* ── Image strip ──────────────────────────────────────────────────── */}
-        <div className={`px-5 py-2.5 border-b border-gray-100 ${images.length > 0 ? 'bg-gray-50/40' : ''}`}>
-          <div className="flex items-center gap-2.5">
-            {images.map((img, i) => (
-              <div key={i} className="relative flex-shrink-0">
-                <img
-                  src={img.url}
-                  alt={img.caption || `Image ${i + 1}`}
-                  className="w-10 h-10 object-cover rounded-lg border border-gray-200"
-                />
-                {i === 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 text-[8px] bg-green-600 text-white rounded-full w-4 h-4 flex items-center justify-center font-bold leading-none">
-                    C
-                  </span>
-                )}
-              </div>
-            ))}
-            <div className="text-xs text-gray-400">
-              <ImageUpload
-                onUpload={imgs => setImages(imgs)}
-                existingImages={images}
-                label={images.length > 0
-                  ? `${images.length} image${images.length > 1 ? 's' : ''} · manage`
-                  : 'Add images'}
-              />
-            </div>
-          </div>
+        {/*
+          FIX: Previously this section rendered images TWICE:
+            1. As small thumbnails via {images.map(...)}
+            2. Again as full preview cards inside <ImageUpload existingImages={images} />
+          Both read from the same `images` state, so every image appeared twice in the UI.
+          The fix is to render ImageUpload directly — it already handles its own previews.
+        */}
+        <div className={`px-5 py-3 border-b border-gray-100 ${images.length > 0 ? 'bg-gray-50/40' : ''}`}>
+          <ImageUpload
+            onUpload={imgs => setImages(imgs)}
+            existingImages={images}
+            label={images.length > 0
+              ? `${images.length} image${images.length > 1 ? 's' : ''} · manage`
+              : 'Add images'}
+          />
         </div>
 
         {/* ── Source URL ───────────────────────────────────────────────────── */}
