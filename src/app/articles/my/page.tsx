@@ -12,6 +12,7 @@ export default function MyArticlesPage() {
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState<any>(null)
   const [filter, setFilter] = useState<'all' | 'published' | 'draft'>('all')
+  const [togglingId, setTogglingId] = useState<string | null>(null)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -32,7 +33,17 @@ export default function MyArticlesPage() {
     setLoading(false)
   }
 
-  async function handleDelete(id: string) {
+  async function handleToggleStatus(e: React.MouseEvent, article: Article) {
+    e.stopPropagation()
+    const newStatus = article.status === 'published' ? 'draft' : 'published'
+    setTogglingId(article.id)
+    await supabase.from('articles').update({ status: newStatus }).eq('id', article.id)
+    setArticles(prev => prev.map(a => a.id === article.id ? { ...a, status: newStatus as any } : a))
+    setTogglingId(null)
+  }
+
+  async function handleDelete(e: React.MouseEvent, id: string) {
+    e.stopPropagation()
     if (!confirm('Are you sure you want to delete this article?')) return
     await supabase.from('articles').delete().eq('id', id)
     setArticles(prev => prev.filter(a => a.id !== id))
@@ -83,9 +94,9 @@ export default function MyArticlesPage() {
       {/* Stats row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
         {[
-          { label: 'Total', value: stats.total, color: 'text-gray-800' },
-          { label: 'Published', value: stats.published, color: 'text-green-700' },
-          { label: 'Draft', value: stats.draft, color: 'text-amber-600' },
+          { label: 'Total',       value: stats.total,                  color: 'text-gray-800' },
+          { label: 'Published',   value: stats.published,              color: 'text-green-700' },
+          { label: 'Draft',       value: stats.draft,                  color: 'text-amber-600' },
           { label: 'Total Views', value: stats.views.toLocaleString(), color: 'text-blue-600' },
         ].map(s => (
           <div key={s.label} className="bg-gray-50 rounded-xl p-4 border border-gray-100">
@@ -140,9 +151,10 @@ export default function MyArticlesPage() {
               article.slug
 
             const langs = article.article_translations?.map((t: any) => t.language) ?? []
+            const isPublished = article.status === 'published'
+            const isToggling = togglingId === article.id
 
             return (
-              // ✅ FIX: Entire card navigates to article on tap
               <div
                 key={article.id}
                 onClick={() => router.push(`/articles/${article.slug}`)}
@@ -174,20 +186,33 @@ export default function MyArticlesPage() {
                           {cat.icon} {cat.label}
                         </span>
                         <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
-                          article.status === 'published'
+                          isPublished
                             ? 'bg-green-50 text-green-700 border border-green-200'
                             : 'bg-amber-50 text-amber-700 border border-amber-200'
                         }`}>
-                          {article.status === 'published' ? '● Published' : '○ Draft'}
+                          {isPublished ? '● Published' : '○ Draft'}
                         </span>
                       </div>
                     </div>
 
-                    {/* ✅ FIX: stopPropagation so buttons don't also trigger card navigation */}
+                    {/* Action buttons */}
                     <div
                       className="flex items-center gap-1.5 flex-shrink-0"
                       onClick={e => e.stopPropagation()}
                     >
+                      {/* Publish / Unpublish toggle */}
+                      <button
+                        onClick={e => handleToggleStatus(e, article)}
+                        disabled={isToggling}
+                        className={`text-xs px-2.5 py-1.5 rounded-lg border transition-colors disabled:opacity-50 ${
+                          isPublished
+                            ? 'border-amber-200 text-amber-600 hover:bg-amber-50'
+                            : 'border-green-200 text-green-700 hover:bg-green-50'
+                        }`}
+                      >
+                        {isToggling ? '…' : isPublished ? 'Unpublish' : 'Publish'}
+                      </button>
+
                       <Link
                         href={`/articles/${article.slug}`}
                         className="text-xs px-2.5 py-1.5 border border-gray-200 rounded-lg
@@ -203,7 +228,7 @@ export default function MyArticlesPage() {
                         ✏️ Edit
                       </Link>
                       <button
-                        onClick={() => handleDelete(article.id)}
+                        onClick={e => handleDelete(e, article.id)}
                         className="text-xs px-2.5 py-1.5 border border-red-200 rounded-lg
                           text-red-600 hover:bg-red-50 transition-colors"
                       >

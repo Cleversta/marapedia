@@ -26,12 +26,13 @@ interface PhotoGroup {
 function AlbumEditModal({ album, onClose, onSave }: {
   album: PhotoGroup
   onClose: () => void
-  onSave: (id: string, title: string, removedImageIds: string[]) => void
+  onSave: (id: string, title: string, removedImageIds: string[], isPublic: boolean) => void
 }) {
   const [title, setTitle] = useState(album.title)
   const [images, setImages] = useState<PhotoImage[]>(album.photo_images ?? [])
   const [saving, setSaving] = useState(false)
   const [removedIds, setRemovedIds] = useState<string[]>([])
+  const [isPublic, setIsPublic] = useState(album.is_public)
 
   function removeImage(id: string) {
     setImages(prev => prev.filter(img => img.id !== id))
@@ -41,7 +42,7 @@ function AlbumEditModal({ album, onClose, onSave }: {
   async function handleSave() {
     if (!title.trim()) return
     setSaving(true)
-    await supabase.from('photo_groups').update({ title: title.trim() }).eq('id', album.id)
+    await supabase.from('photo_groups').update({ title: title.trim(), is_public: isPublic }).eq('id', album.id)
     if (removedIds.length > 0) {
       await supabase.from('photo_images').delete().in('id', removedIds)
     }
@@ -49,7 +50,7 @@ function AlbumEditModal({ album, onClose, onSave }: {
       const sorted = [...images].sort((a, b) => a.sort_order - b.sort_order)
       await supabase.from('photo_groups').update({ thumbnail_url: sorted[0].url }).eq('id', album.id)
     }
-    onSave(album.id, title.trim(), removedIds)
+    onSave(album.id, title.trim(), removedIds, isPublic)
     setSaving(false)
     onClose()
   }
@@ -67,6 +68,7 @@ function AlbumEditModal({ album, onClose, onSave }: {
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+          {/* Title */}
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">Album Title</label>
             <input
@@ -74,6 +76,29 @@ function AlbumEditModal({ album, onClose, onSave }: {
               className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-green-500"
             />
           </div>
+
+          {/* Visibility toggle */}
+          <div className="flex items-center justify-between py-1">
+            <div>
+              <p className="text-xs font-medium text-gray-500">Visibility</p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                {isPublic ? 'Visible to everyone' : 'Hidden from public'}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsPublic(p => !p)}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                isPublic ? 'bg-green-600' : 'bg-gray-200'
+              }`}
+            >
+              <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                isPublic ? 'translate-x-6' : 'translate-x-1'
+              }`} />
+            </button>
+          </div>
+
+          {/* Photos */}
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-2">
               Photos ({images.length}) — hover to remove
@@ -210,10 +235,23 @@ export default function ProfilePage() {
     setSuccess('Profile picture removed.'); setTimeout(() => setSuccess(''), 3000)
   }
 
+  async function handleToggleArticleStatus(e: React.MouseEvent, article: Article) {
+    e.stopPropagation()
+    const newStatus = article.status === 'published' ? 'draft' : 'published'
+    await supabase.from('articles').update({ status: newStatus }).eq('id', article.id)
+    setArticles(prev => prev.map(a => a.id === article.id ? { ...a, status: newStatus as any } : a))
+  }
+
   async function handleDeleteArticle(articleId: string) {
     if (!confirm('Delete this article? This cannot be undone.')) return
     await supabase.from('articles').delete().eq('id', articleId)
     setArticles(prev => prev.filter(a => a.id !== articleId))
+  }
+
+  async function handleToggleAlbumPublic(e: React.MouseEvent, album: PhotoGroup) {
+    e.stopPropagation()
+    await supabase.from('photo_groups').update({ is_public: !album.is_public }).eq('id', album.id)
+    setAlbums(prev => prev.map(a => a.id === album.id ? { ...a, is_public: !album.is_public } : a))
   }
 
   async function handleDeleteAlbum(id: string) {
@@ -222,12 +260,13 @@ export default function ProfilePage() {
     setAlbums(prev => prev.filter(a => a.id !== id))
   }
 
-  function handleAlbumSaved(id: string, newTitle: string, removedImageIds: string[]) {
+  function handleAlbumSaved(id: string, newTitle: string, removedImageIds: string[], isPublic: boolean) {
     setAlbums(prev => prev.map(a => {
       if (a.id !== id) return a
       return {
         ...a,
         title: newTitle,
+        is_public: isPublic,
         photo_images: (a.photo_images ?? []).filter(img => !removedImageIds.includes(img.id)),
       }
     }))
@@ -384,7 +423,6 @@ export default function ProfilePage() {
                 const t = article.article_translations?.find((t: any) => t.language === 'english') ?? article.article_translations?.[0]
                 const cat = getCategoryInfo(article.category)
                 return (
-                  // ✅ FIX: Entire row is clickable
                   <div key={article.id}
                     onClick={() => router.push(`/articles/${article.slug}`)}
                     className="bg-white border border-gray-200 rounded-xl px-4 py-3 flex items-center justify-between gap-4 cursor-pointer hover:border-gray-300 hover:shadow-sm transition-all">
@@ -397,11 +435,20 @@ export default function ProfilePage() {
                         <p className="text-xs text-gray-400">{cat.label} · {timeAgo(article.updated_at ?? article.created_at)}</p>
                       </div>
                     </div>
-                    {/* ✅ FIX: stopPropagation on buttons */}
                     <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
                       <span className={`text-xs px-2 py-0.5 rounded-full ${
                         article.status === 'published' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
                       }`}>{article.status}</span>
+                      <button
+                        onClick={e => handleToggleArticleStatus(e, article)}
+                        className={`text-xs px-2 py-1 rounded-lg border transition-colors ${
+                          article.status === 'published'
+                            ? 'border-amber-200 text-amber-600 hover:bg-amber-50'
+                            : 'border-green-200 text-green-700 hover:bg-green-50'
+                        }`}
+                      >
+                        {article.status === 'published' ? 'Unpublish' : 'Publish'}
+                      </button>
                       <Link href={`/articles/edit/${article.slug}`}
                         className="text-xs px-2 py-1 border border-gray-200 rounded-lg hover:bg-gray-50">Edit</Link>
                       <button onClick={() => handleDeleteArticle(article.id)}
@@ -437,7 +484,6 @@ export default function ProfilePage() {
                 const images = [...(album.photo_images ?? [])].sort((a, b) => a.sort_order - b.sort_order)
                 const cover = images[0]
                 return (
-                  // ✅ FIX: Entire album card is clickable
                   <div key={album.id}
                     onClick={() => router.push(`/photos/${album.id}`)}
                     className="bg-white border border-gray-200 rounded-xl p-3 flex items-center gap-4 cursor-pointer hover:border-gray-300 hover:shadow-sm transition-all">
@@ -478,13 +524,26 @@ export default function ProfilePage() {
                       </span>
                     </div>
 
-                    {/* ✅ FIX: stopPropagation on buttons */}
+                    {/* Buttons */}
                     <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
-                      <button onClick={() => setEditingAlbum(album)}
+                      {/* ← new inline visibility toggle */}
+                      <button
+                        onClick={e => handleToggleAlbumPublic(e, album)}
+                        className={`text-xs px-2 py-1 rounded-lg border transition-colors ${
+                          album.is_public
+                            ? 'border-amber-200 text-amber-600 hover:bg-amber-50'
+                            : 'border-green-200 text-green-700 hover:bg-green-50'
+                        }`}
+                      >
+                        {album.is_public ? 'Hide' : 'Make Public'}
+                      </button>
+                      <button
+                        onClick={e => { e.stopPropagation(); setEditingAlbum(album) }}
                         className="text-xs px-2 py-1 border border-gray-200 rounded-lg hover:bg-gray-50">
                         ✏️ Edit
                       </button>
-                      <button onClick={() => handleDeleteAlbum(album.id)}
+                      <button
+                        onClick={e => { e.stopPropagation(); handleDeleteAlbum(album.id) }}
                         className="text-xs px-2 py-1 border border-red-200 text-red-500 rounded-lg hover:bg-red-50">
                         Delete
                       </button>
