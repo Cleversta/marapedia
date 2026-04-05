@@ -21,7 +21,7 @@ const getArticle = unstable_cache(
         thumbnail_url, view_count, created_at, updated_at, author_id,
         source_url,
         images(url, caption),
-        profiles(username, avatar_url),
+        profiles!articles_author_id_fkey(username, avatar_url),
         article_translations(id, language, title, content, excerpt)
       `)
       .eq('slug', slug)
@@ -34,25 +34,26 @@ const getArticle = unstable_cache(
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
-  const data = await getArticle(slug)
-  if (!data) return { title: 'Article Not Found' }
+  const raw = await getArticle(slug)
+  if (!raw) return { title: 'Article Not Found' }
+
+  // ✅ Normalize profiles — always a plain object
+  const prof = Array.isArray(raw.profiles) ? raw.profiles[0] ?? null : raw.profiles
 
   const translation =
-    data.article_translations?.find((t: any) => t.language === 'english') ??
-    data.article_translations?.find((t: any) => t.language === 'mara') ??
-    data.article_translations?.[0]
+    raw.article_translations?.find((t: any) => t.language === 'english') ??
+    raw.article_translations?.find((t: any) => t.language === 'mara') ??
+    raw.article_translations?.[0]
 
-  const title = translation?.title ?? data.slug
+  const title = translation?.title ?? raw.slug
   const description =
     translation?.excerpt ??
     (translation?.content ?? '').replace(/<[^>]*>/g, '').substring(0, 160)
 
-  const authorName = Array.isArray(data.profiles)
-    ? (data.profiles[0]?.username ?? 'Marapedia')
-    : (data.profiles?.username ?? 'Marapedia')
+  const authorName = prof?.username ?? 'Marapedia'
 
-  const image = data.thumbnail_url
-    ? { url: data.thumbnail_url, width: 1200, height: 630, alt: title }
+  const image = raw.thumbnail_url
+    ? { url: raw.thumbnail_url, width: 1200, height: 630, alt: title }
     : { url: `${SITE_URL}/og-image.png`, width: 1200, height: 630, alt: title }
 
   return {
@@ -61,10 +62,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     openGraph: {
       title,
       description,
-      url: `${SITE_URL}/articles/${data.slug}`,
+      url: `${SITE_URL}/articles/${raw.slug}`,
       type: 'article',
-      publishedTime: data.created_at,
-      modifiedTime: data.updated_at ?? undefined,
+      publishedTime: raw.created_at,
+      modifiedTime: raw.updated_at ?? undefined,
       authors: [authorName],
       images: [image],
     },
@@ -79,17 +80,21 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function ArticleDetailPage({ params }: Props) {
   const { slug } = await params
-  const article = await getArticle(slug)
-  if (!article) notFound()
+  const raw = await getArticle(slug)
+  if (!raw) notFound()
+
+  // ✅ Normalize profiles before passing to client — always a plain object
+  const article: Article = {
+    ...raw,
+    profiles: Array.isArray(raw.profiles) ? raw.profiles[0] ?? null : raw.profiles,
+  }
 
   const translation =
     article.article_translations?.find((t: any) => t.language === 'english') ??
     article.article_translations?.find((t: any) => t.language === 'mara') ??
     article.article_translations?.[0]
 
-  const authorName = Array.isArray(article.profiles)
-    ? (article.profiles[0]?.username ?? 'Marapedia')
-    : (article.profiles?.username ?? 'Marapedia')
+  const authorName = article.profiles?.username ?? 'Marapedia'
 
   return (
     <>

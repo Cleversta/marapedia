@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { timeAgo, getCategoryInfo } from '@/lib/utils'
+import ArticleCard from '@/components/ArticleCard'
 import type { Profile, Article } from '@/types'
 
 interface PhotoImage {
@@ -22,7 +23,13 @@ interface PhotoGroup {
   photo_images?: PhotoImage[]
 }
 
-// ─── Album Edit Modal ──────────────────────────────────────────────────────────
+interface FavoriteRow {
+  id: string
+  created_at: string
+  article: Article
+}
+
+// ─── Album Edit Modal (unchanged) ────────────────────────────────────────────
 function AlbumEditModal({ album, onClose, onSave }: {
   album: PhotoGroup
   onClose: () => void
@@ -66,45 +73,26 @@ function AlbumEditModal({ album, onClose, onSave }: {
             </svg>
           </button>
         </div>
-
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-          {/* Title */}
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">Album Title</label>
-            <input
-              type="text" value={title} onChange={e => setTitle(e.target.value)} maxLength={200}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-green-500"
-            />
+            <input type="text" value={title} onChange={e => setTitle(e.target.value)} maxLength={200}
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-green-500" />
           </div>
-
-          {/* Visibility toggle */}
           <div className="flex items-center justify-between py-1">
             <div>
               <p className="text-xs font-medium text-gray-500">Visibility</p>
-              <p className="text-xs text-gray-400 mt-0.5">
-                {isPublic ? 'Visible to everyone' : 'Hidden from public'}
-              </p>
+              <p className="text-xs text-gray-400 mt-0.5">{isPublic ? 'Visible to everyone' : 'Hidden from public'}</p>
             </div>
-            <button
-              type="button"
-              onClick={() => setIsPublic(p => !p)}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                isPublic ? 'bg-green-600' : 'bg-gray-200'
-              }`}
-            >
-              <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
-                isPublic ? 'translate-x-6' : 'translate-x-1'
-              }`} />
+            <button type="button" onClick={() => setIsPublic(p => !p)}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${isPublic ? 'bg-green-600' : 'bg-gray-200'}`}>
+              <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${isPublic ? 'translate-x-6' : 'translate-x-1'}`} />
             </button>
           </div>
-
-          {/* Photos */}
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-2">
-              Photos ({images.length}) — hover to remove
-            </label>
+            <label className="block text-xs font-medium text-gray-500 mb-2">Photos ({images.length}) — hover to remove</label>
             {images.length === 0 ? (
-              <p className="text-xs text-gray-400 italic">All photos removed. Save to delete the album, or cancel.</p>
+              <p className="text-xs text-gray-400 italic">All photos removed.</p>
             ) : (
               <div className="grid grid-cols-3 gap-2">
                 {[...images].sort((a, b) => a.sort_order - b.sort_order).map((img, i) => (
@@ -112,9 +100,7 @@ function AlbumEditModal({ album, onClose, onSave }: {
                     <div className="h-20 relative">
                       <img src={img.url} alt="" className="w-full h-full object-cover" />
                       {i === 0 && (
-                        <span className="absolute top-1 left-1 bg-green-600 text-white text-[8px] font-bold px-1 py-0.5 rounded-full uppercase">
-                          Cover
-                        </span>
+                        <span className="absolute top-1 left-1 bg-green-600 text-white text-[8px] font-bold px-1 py-0.5 rounded-full uppercase">Cover</span>
                       )}
                       <button type="button" onClick={() => removeImage(img.id)}
                         className="absolute inset-0 bg-red-500/70 text-white opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-xs font-medium">
@@ -128,7 +114,6 @@ function AlbumEditModal({ album, onClose, onSave }: {
             )}
           </div>
         </div>
-
         <div className="px-5 py-3 border-t border-gray-100 shrink-0 flex justify-end gap-2 bg-gray-50/60">
           <button onClick={onClose} className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700 transition-colors">Cancel</button>
           <button onClick={handleSave} disabled={!title.trim() || saving}
@@ -147,6 +132,7 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [articles, setArticles] = useState<Article[]>([])
   const [albums, setAlbums] = useState<PhotoGroup[]>([])
+  const [favorites, setFavorites] = useState<Article[]>([])          // ← NEW
   const [editing, setEditing] = useState(false)
   const [form, setForm] = useState({ full_name: '', bio: '' })
   const [saving, setSaving] = useState(false)
@@ -154,7 +140,7 @@ export default function ProfilePage() {
   const [avatarUploading, setAvatarUploading] = useState(false)
   const [avatarError, setAvatarError] = useState('')
   const [editingAlbum, setEditingAlbum] = useState<PhotoGroup | null>(null)
-  const [activeTab, setActiveTab] = useState<'articles' | 'photos'>('articles')
+  const [activeTab, setActiveTab] = useState<'articles' | 'photos' | 'favorites'>('articles')  // ← NEW
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -163,6 +149,7 @@ export default function ProfilePage() {
       fetchProfile(session.user.id)
       fetchMyArticles(session.user.id)
       fetchMyAlbums(session.user.id)
+      fetchMyFavorites(session.user.id)   // ← NEW
     })
   }, [])
 
@@ -189,6 +176,41 @@ export default function ProfilePage() {
       .order('created_at', { ascending: false })
     setAlbums(data ?? [])
   }
+
+  // ── NEW: fetch favorited articles ──────────────────────────────────────────
+  async function fetchMyFavorites(userId: string) {
+    const { data } = await supabase
+      .from('favorites')
+      .select(`
+        id,
+        created_at,
+        article:articles(
+          id, slug, category, status, featured, thumbnail_url, view_count,
+          created_at, updated_at,
+          profiles(id, username, avatar_url),
+          article_translations(id, article_id, language, title, excerpt, content)
+        )
+      `)
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+
+    const articles = (data ?? [])
+      .map((row: any) => row.article)
+      .filter(Boolean) as Article[]
+
+    setFavorites(articles)
+  }
+
+  async function handleUnfavorite(articleId: string) {
+    if (!profile) return
+    await supabase
+      .from('favorites')
+      .delete()
+      .eq('user_id', profile.id)
+      .eq('article_id', articleId)
+    setFavorites(prev => prev.filter(a => a.id !== articleId))
+  }
+  // ──────────────────────────────────────────────────────────────────────────
 
   async function handleSave() {
     if (!profile) return
@@ -377,7 +399,7 @@ export default function ProfilePage() {
           { label: 'Articles',     value: articles.length,                                       color: 'text-gray-800' },
           { label: 'Published',    value: articles.filter(a => a.status === 'published').length, color: 'text-green-700' },
           { label: 'Photo Albums', value: albums.length,                                         color: 'text-pink-600' },
-          { label: 'Total Photos', value: totalPhotos,                                           color: 'text-blue-600' },
+          { label: 'Saved',        value: favorites.length,                                      color: 'text-red-500' },  // ← CHANGED from Total Photos
         ].map(s => (
           <div key={s.label} className="bg-gray-50 rounded-xl p-4 border border-gray-100">
             <p className="text-xs text-gray-400 mb-1">{s.label}</p>
@@ -386,11 +408,12 @@ export default function ProfilePage() {
         ))}
       </div>
 
-      {/* Tabs */}
+      {/* Tabs — now 3 tabs */}
       <div className="flex gap-0 border-b border-gray-200 mb-5">
         {([
-          { key: 'articles', label: `Articles (${articles.length})` },
-          { key: 'photos',   label: `Photo Albums (${albums.length})` },
+          { key: 'articles',  label: `Articles (${articles.length})` },
+          { key: 'photos',    label: `Photo Albums (${albums.length})` },
+          { key: 'favorites', label: `Saved (${favorites.length})` },
         ] as { key: typeof activeTab; label: string }[]).map(t => (
           <button key={t.key} onClick={() => setActiveTab(t.key)}
             className={`px-4 py-2 text-sm border-b-2 transition-colors ${
@@ -429,9 +452,7 @@ export default function ProfilePage() {
                     <div className="flex items-center gap-3 flex-1 min-w-0">
                       <span className="text-lg">{cat.icon}</span>
                       <div className="min-w-0">
-                        <p className="font-medium text-sm truncate text-gray-900">
-                          {t?.title ?? 'Untitled'}
-                        </p>
+                        <p className="font-medium text-sm truncate text-gray-900">{t?.title ?? 'Untitled'}</p>
                         <p className="text-xs text-gray-400">{cat.label} · {timeAgo(article.updated_at ?? article.created_at)}</p>
                       </div>
                     </div>
@@ -439,14 +460,12 @@ export default function ProfilePage() {
                       <span className={`text-xs px-2 py-0.5 rounded-full ${
                         article.status === 'published' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
                       }`}>{article.status}</span>
-                      <button
-                        onClick={e => handleToggleArticleStatus(e, article)}
+                      <button onClick={e => handleToggleArticleStatus(e, article)}
                         className={`text-xs px-2 py-1 rounded-lg border transition-colors ${
                           article.status === 'published'
                             ? 'border-amber-200 text-amber-600 hover:bg-amber-50'
                             : 'border-green-200 text-green-700 hover:bg-green-50'
-                        }`}
-                      >
+                        }`}>
                         {article.status === 'published' ? 'Unpublish' : 'Publish'}
                       </button>
                       <Link href={`/articles/edit/${article.slug}`}
@@ -487,15 +506,10 @@ export default function ProfilePage() {
                   <div key={album.id}
                     onClick={() => router.push(`/photos/${album.id}`)}
                     className="bg-white border border-gray-200 rounded-xl p-3 flex items-center gap-4 cursor-pointer hover:border-gray-300 hover:shadow-sm transition-all">
-                    {/* Cover thumbnail */}
                     <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 shrink-0">
-                      {cover
-                        ? <img src={cover.url} alt="" className="w-full h-full object-cover" />
-                        : <div className="w-full h-full flex items-center justify-center text-gray-300 text-2xl">📷</div>
-                      }
+                      {cover ? <img src={cover.url} alt="" className="w-full h-full object-cover" />
+                        : <div className="w-full h-full flex items-center justify-center text-gray-300 text-2xl">📷</div>}
                     </div>
-
-                    {/* Thumbnail strip */}
                     {images.length > 1 && (
                       <div className="flex gap-1 shrink-0">
                         {images.slice(1, 4).map(img => (
@@ -510,43 +524,24 @@ export default function ProfilePage() {
                         )}
                       </div>
                     )}
-
-                    {/* Info */}
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-sm truncate">{album.title}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        {images.length} photo{images.length !== 1 ? 's' : ''} · {timeAgo(album.created_at)}
-                      </p>
+                      <p className="text-xs text-gray-400 mt-0.5">{images.length} photo{images.length !== 1 ? 's' : ''} · {timeAgo(album.created_at)}</p>
                       <span className={`inline-block mt-1 text-[10px] px-1.5 py-0.5 rounded-full ${
                         album.is_public ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
-                      }`}>
-                        {album.is_public ? 'Public' : 'Hidden'}
-                      </span>
+                      }`}>{album.is_public ? 'Public' : 'Hidden'}</span>
                     </div>
-
-                    {/* Buttons */}
                     <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
-                      {/* ← new inline visibility toggle */}
-                      <button
-                        onClick={e => handleToggleAlbumPublic(e, album)}
+                      <button onClick={e => handleToggleAlbumPublic(e, album)}
                         className={`text-xs px-2 py-1 rounded-lg border transition-colors ${
-                          album.is_public
-                            ? 'border-amber-200 text-amber-600 hover:bg-amber-50'
-                            : 'border-green-200 text-green-700 hover:bg-green-50'
-                        }`}
-                      >
+                          album.is_public ? 'border-amber-200 text-amber-600 hover:bg-amber-50' : 'border-green-200 text-green-700 hover:bg-green-50'
+                        }`}>
                         {album.is_public ? 'Hide' : 'Make Public'}
                       </button>
-                      <button
-                        onClick={e => { e.stopPropagation(); setEditingAlbum(album) }}
-                        className="text-xs px-2 py-1 border border-gray-200 rounded-lg hover:bg-gray-50">
-                        ✏️ Edit
-                      </button>
-                      <button
-                        onClick={e => { e.stopPropagation(); handleDeleteAlbum(album.id) }}
-                        className="text-xs px-2 py-1 border border-red-200 text-red-500 rounded-lg hover:bg-red-50">
-                        Delete
-                      </button>
+                      <button onClick={e => { e.stopPropagation(); setEditingAlbum(album) }}
+                        className="text-xs px-2 py-1 border border-gray-200 rounded-lg hover:bg-gray-50">✏️ Edit</button>
+                      <button onClick={e => { e.stopPropagation(); handleDeleteAlbum(album.id) }}
+                        className="text-xs px-2 py-1 border border-red-200 text-red-500 rounded-lg hover:bg-red-50">Delete</button>
                     </div>
                   </div>
                 )
@@ -555,6 +550,54 @@ export default function ProfilePage() {
           )}
         </div>
       )}
+
+      {/* ── NEW: Favorites tab ─────────────────────────────────────────────── */}
+      {activeTab === 'favorites' && (
+        <div>
+          <p className="text-sm text-gray-500 mb-4">
+            {favorites.length} saved article{favorites.length !== 1 ? 's' : ''}
+          </p>
+          {favorites.length === 0 ? (
+            <div className="text-center py-10 bg-gray-50 rounded-xl border border-dashed border-gray-300">
+              <p className="text-2xl mb-2">🤍</p>
+              <p className="text-gray-400 mb-3">No saved articles yet.</p>
+              <Link href="/" className="text-sm px-4 py-2 bg-green-700 text-white rounded-lg hover:bg-green-800">
+                Browse articles
+              </Link>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {favorites.map(article => {
+                const t = article.article_translations?.find((t: any) => t.language === 'english')
+                       ?? article.article_translations?.[0]
+                const cat = getCategoryInfo(article.category)
+                return (
+                  <div key={article.id}
+                    onClick={() => router.push(`/articles/${article.slug}`)}
+                    className="bg-white border border-gray-200 rounded-xl px-4 py-3 flex items-center justify-between gap-4 cursor-pointer hover:border-gray-300 hover:shadow-sm transition-all">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <span className="text-lg">{cat.icon}</span>
+                      <div className="min-w-0">
+                        <p className="font-medium text-sm truncate text-gray-900">{t?.title ?? 'Untitled'}</p>
+                        <p className="text-xs text-gray-400">
+                          {cat.label} · by {article.profiles?.username ?? 'Anonymous'} · {timeAgo(article.updated_at ?? article.created_at)}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={e => { e.stopPropagation(); handleUnfavorite(article.id) }}
+                      title="Remove from saved"
+                      className="shrink-0 text-xs px-2 py-1 border border-red-200 text-red-400 rounded-lg hover:bg-red-50 transition-colors">
+                      Remove
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
+      {/* ────────────────────────────────────────────────────────────────────── */}
 
       {/* Album edit modal */}
       {editingAlbum && (

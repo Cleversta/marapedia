@@ -7,8 +7,10 @@ import { getCategoryInfo, formatDate, timeAgo, getArticleTypeLabel } from '@/lib
 import SongViewer from '@/components/SongViewer'
 import PoemViewer from '@/components/PoemViewer'
 import ShareButtons from '@/components/ShareButton'
+import FavoriteButton from '@/components/FavoriteButton'   // ← NEW
 import type { Article } from '@/types'
 
+// ─── (ARTICLE_STYLES unchanged — paste your original const here) ─────────────
 const ARTICLE_STYLES = `
 @import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap');
 
@@ -121,6 +123,8 @@ export default function ArticleDetailClient({ article }: { article: Article }) {
   const [profile, setProfile] = useState<any>(null)
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
 
+  const prof = article.profiles
+
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       setUser(session?.user ?? null)
@@ -173,7 +177,7 @@ export default function ArticleDetailClient({ article }: { article: Article }) {
   const translation = translations.find(t => t.language === currentLang) ?? translations[0]
   const isOwner = user?.id === article.author_id
   const isAdmin = profile?.role === 'admin'
-  const canEdit = isOwner || isAdmin  // ← admin can edit any article
+  const canEdit = isOwner || isAdmin
   const allImages = allImagesForLightbox()
   const typeLabel = getArticleTypeLabel(article.category, article.article_type)
 
@@ -192,10 +196,8 @@ export default function ArticleDetailClient({ article }: { article: Article }) {
         </div>
       )
     }
-
     if (article.category === 'songs') return <SongViewer content={translation.content} title={translation.title ?? ''} />
     if (article.category === 'poems') return <PoemViewer content={translation.content} />
-
     return <div className="article-body" dangerouslySetInnerHTML={{ __html: translation.content }} />
   }
 
@@ -275,6 +277,8 @@ export default function ArticleDetailClient({ article }: { article: Article }) {
                   Admin
                 </span>
               )}
+              <FavoriteButton articleId={article.id} variant="button" />
+
               {canEdit && (
                 <Link href={`/articles/edit/${article.slug}`}
                   className="flex items-center gap-1 text-xs px-3 py-1.5 bg-white border border-stone-200 text-stone-500 rounded-lg hover:border-green-300 hover:text-green-700 transition-all font-medium">
@@ -290,19 +294,17 @@ export default function ArticleDetailClient({ article }: { article: Article }) {
 
         <main className="max-w-3xl mx-auto px-4 py-10 pb-24">
           <header className="mb-10">
+
+            {/* Author byline */}
             <div className="flex items-center gap-2.5 mb-5">
               <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-[10px] font-bold text-green-800 overflow-hidden ring-1 ring-stone-200 shrink-0">
-                {article.profiles?.avatar_url
-                  ? <img src={article.profiles.avatar_url} alt="" className="w-full h-full object-cover" />
-                  : (Array.isArray(article.profiles)
-                      ? article.profiles[0]?.username?.[0]?.toUpperCase()
-                      : article.profiles?.username?.[0]?.toUpperCase()) ?? 'A'}
+                {prof?.avatar_url
+                  ? <img src={prof.avatar_url} alt="" className="w-full h-full object-cover" />
+                  : prof?.username?.[0]?.toUpperCase() ?? 'A'}
               </div>
               <div className="flex items-center gap-1.5 flex-wrap text-xs text-stone-400">
                 <span className="font-medium text-stone-600">
-                  {Array.isArray(article.profiles)
-                    ? (article.profiles[0]?.username ?? 'Anonymous')
-                    : (article.profiles?.username ?? 'Anonymous')}
+                  {prof?.username ?? 'Anonymous'}
                 </span>
                 <span className="text-stone-300">·</span>
                 <span>{formatDate(article.updated_at ?? article.created_at)}</span>
@@ -358,6 +360,7 @@ export default function ArticleDetailClient({ article }: { article: Article }) {
                 ))}
               </div>
             )}
+
             <div className="border-b border-stone-200" />
           </header>
 
@@ -377,10 +380,12 @@ export default function ArticleDetailClient({ article }: { article: Article }) {
           {renderContent()}
 
           <footer className="mt-16 pt-6 border-t border-stone-200 space-y-4">
+            {/* ── Share row ── */}
             <ShareButtons
               url={`https://marapedia.org/articles/${article.slug}`}
               title={translation?.title ?? article.slug}
             />
+
             <div className="flex items-center justify-between flex-wrap gap-3">
               <p className="text-xs text-stone-400 flex items-center gap-1.5">
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">

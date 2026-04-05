@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { getCategoryInfo, timeAgo, makeExcerpt, getPreferredTranslation } from '@/lib/utils'
+import FavoriteButton from '@/components/FavoriteButton'
 import type { Article } from '@/types'
 
 interface Props {
@@ -133,17 +134,29 @@ export default function ArticleCard({ article }: Props) {
 
         {/* Thumbnail */}
         {article.thumbnail_url ? (
-          <div className="h-44 overflow-hidden flex-shrink-0 bg-gray-100">
+          <div className="relative h-44 overflow-hidden flex-shrink-0 bg-gray-100">
             <img
               src={article.thumbnail_url}
               alt={translation.title ?? ''}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             />
+            {/* Favorite — top-right corner over image */}
+            <div className="absolute top-2 right-2" onClick={e => e.preventDefault()}>
+              <FavoriteButton
+                articleId={article.id}
+                variant="overlay"
+                className={touched ? 'opacity-100' : ''}
+              />
+            </div>
           </div>
         ) : (
-          <div className="h-20 flex-shrink-0 bg-gradient-to-br from-gray-50 to-gray-100
+          <div className="relative h-20 flex-shrink-0 bg-gradient-to-br from-gray-50 to-gray-100
             flex items-center justify-center text-3xl opacity-40 select-none">
             {cat.icon}
+            {/* Favorite — top-right corner, no-image fallback */}
+            <div className="absolute top-2 right-2 opacity-100" onClick={e => e.preventDefault()}>
+              <FavoriteButton articleId={article.id} variant="overlay" />
+            </div>
           </div>
         )}
 
@@ -192,7 +205,7 @@ export default function ArticleCard({ article }: Props) {
               )}
               <span>{timeAgo(article.updated_at ?? article.created_at)}</span>
 
-              {/* Tiny share button — sits right in the footer row */}
+              {/* ── Share button ── */}
               <div className="relative" onClick={e => e.preventDefault()}>
                 {showShare && (
                   <SharePopover
