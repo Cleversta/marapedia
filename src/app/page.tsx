@@ -585,15 +585,15 @@ export default async function HomePage() {
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-3 gap-2 w-full mb-3.5">
+            <div className="flex gap-2 mb-3.5">
               {([
                 { value: stats.articles.toLocaleString(), label: 'Articles',     icon: '📄' },
                 { value: stats.users.toLocaleString(),    label: 'Contributors', icon: '👥' },
                 { value: '4',                             label: 'Languages',    icon: '🌐' },
               ] as { value: string; label: string; icon: string }[]).map(({ value, label, icon }) => (
-                <div
-                  key={label}
-                  className="rounded-xl py-3 flex flex-col items-center"
+              <div
+  key={label}
+  className="rounded-xl py-3 px-8 flex flex-col items-center"
                   style={{ backgroundColor: statBg, border: `1px solid ${statBorder}` }}
                 >
                   <span className="text-[13px] mb-0.5" style={{ color: statIcon }}>{icon}</span>
