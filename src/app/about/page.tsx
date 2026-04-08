@@ -227,20 +227,20 @@ export default function AboutPage() {
             Have questions, suggestions, or want to report an issue? We'd love to hear from you. Marapedia is a community project and your feedback helps make it better.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <a href="mailto:contact@marapedia.org"
+            <a href="mailto:marasontleitu@gmail.com"
               className="flex items-center gap-3 p-4 bg-white border border-gray-200 rounded-xl hover:border-green-300 hover:shadow-sm transition-all group">
               <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center text-xl flex-shrink-0">📧</div>
               <div>
                 <p className="text-sm font-semibold text-gray-800 group-hover:text-green-700 transition-colors">Email</p>
-                <p className="text-xs text-gray-400">contact@marapedia.org</p>
+                <p className="text-xs text-gray-400">marasontleitu@gmail.com</p>
               </div>
             </a>
-            <a href="https://facebook.com/marapedia" target="_blank" rel="noopener noreferrer"
+            <a href="https://facebook.com/Marapedia" target="_blank" rel="noopener noreferrer"
               className="flex items-center gap-3 p-4 bg-white border border-gray-200 rounded-xl hover:border-blue-300 hover:shadow-sm transition-all group">
               <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center text-xl flex-shrink-0">📘</div>
               <div>
                 <p className="text-sm font-semibold text-gray-800 group-hover:text-blue-700 transition-colors">Facebook</p>
-                <p className="text-xs text-gray-400">facebook.com/marapedia</p>
+                <p className="text-xs text-gray-400">facebook.com/Marapedia</p>
               </div>
             </a>
           </div>
