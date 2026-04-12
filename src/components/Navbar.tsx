@@ -16,6 +16,7 @@ export default function Navbar() {
   const [searchFocused, setSearchFocused] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [shortcutLabel, setShortcutLabel] = useState('Ctrl K')
+  const [categoryCounts, setCategoryCounts] = useState<Record<string, number>>({})
   const menuRef = useRef<HTMLDivElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
 
@@ -30,6 +31,20 @@ export default function Navbar() {
       setUser(session?.user ?? null)
       if (session?.user) fetchProfile(session.user.id)
     })
+
+    // Fetch article counts per category — single lightweight query
+    supabase
+      .from('articles')
+      .select('category')
+      .eq('status', 'published')
+      .then(({ data }) => {
+        const counts: Record<string, number> = {}
+        data?.forEach(({ category }) => {
+          counts[category] = (counts[category] ?? 0) + 1
+        })
+        setCategoryCounts(counts)
+      })
+
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
       if (session?.user) fetchProfile(session.user.id)
@@ -84,6 +99,8 @@ export default function Navbar() {
     }
   }
 
+  const totalCount = Object.values(categoryCounts).reduce((a, b) => a + b, 0)
+
   const isEditor = profile?.role === 'editor' || profile?.role === 'admin'
   const isAdmin = profile?.role === 'admin'
 
@@ -92,6 +109,46 @@ export default function Navbar() {
   }
   function isCatActive(cat: typeof CATEGORIES[number]) {
     return pathname === catHref(cat)
+  }
+
+  function formatCount(n: number) {
+    if (n >= 1000) return `${(n / 1000).toFixed(1)}k`
+    return n.toLocaleString()
+  }
+
+  // Count badge — bigger, more beautiful
+  function CountBadge({
+    cat,
+    active,
+    size = 'md',
+  }: {
+    cat: typeof CATEGORIES[number]
+    active: boolean
+    size?: 'sm' | 'md'
+  }) {
+    const isAll = (cat as any).href === '/'
+    const raw   = isAll ? totalCount : (categoryCounts[cat.value] ?? null)
+    if (raw === null || raw === 0) return null
+
+    return (
+      <span
+        className={`
+          inline-flex items-center justify-center font-extrabold rounded-full leading-none
+          transition-all duration-150
+          ${size === 'sm'
+            ? 'text-[10px] px-1.5 py-0.5'
+            : 'text-[11px] px-2 py-0.5'
+          }
+          ${active
+            ? 'bg-white text-green-700'
+            : 'bg-green-50 text-green-700 border border-green-200'
+          }
+        `}
+        style={{ letterSpacing: '-0.02em' }}
+      >
+        {formatCount(raw)}
+      </span>
+    )
   }
 
   function UserAvatar({ size = 8 }: { size?: number }) {
@@ -348,27 +405,31 @@ export default function Navbar() {
             className="hidden md:flex items-center gap-1.5 overflow-x-auto scrollbar-hide border-t border-gray-200 py-2.5 -mx-4 px-4"
             aria-label="Category navigation"
           >
-            {CATEGORIES.map((cat, i) => (
-              <Link
-                key={cat.value}
-                href={catHref(cat)}
-                className={`flex items-center gap-1.5 text-[12.5px] px-3.5 py-1.5 whitespace-nowrap
-                  rounded-full border-2 font-semibold shrink-0 transition-all duration-150 active:scale-95
-                  ${isCatActive(cat)
-                    ? 'border-green-800 bg-gradient-to-b from-green-700 to-green-800 text-white shadow-md shadow-green-900/30 -translate-y-px'
-                    : 'border-gray-400 bg-white text-slate-700 hover:border-green-600 hover:text-green-800 hover:bg-green-50 hover:shadow-sm active:bg-green-100'
-                  }`}
-              >
-                <span className="text-sm leading-none">{cat.icon}</span>
-                <span>{cat.label}</span>
-                {i === 0 && (
-                  <span className={`ml-0.5 text-[9px] border rounded px-1 py-0.5 leading-none select-none font-mono font-normal
-                    ${isCatActive(cat) ? 'border-green-500/60 text-green-200' : 'border-gray-400 text-gray-500'}`}>
-                    Tab
-                  </span>
-                )}
-              </Link>
-            ))}
+            {CATEGORIES.map((cat, i) => {
+              const active = isCatActive(cat)
+              return (
+                <Link
+                  key={cat.value}
+                  href={catHref(cat)}
+                  className={`flex items-center gap-1.5 text-[12.5px] px-3.5 py-1.5 whitespace-nowrap
+                    rounded-full border-2 font-semibold shrink-0 transition-all duration-150 active:scale-95
+                    ${active
+                      ? 'border-green-800 bg-gradient-to-b from-green-700 to-green-800 text-white shadow-md shadow-green-900/30 -translate-y-px'
+                      : 'border-gray-400 bg-white text-slate-700 hover:border-green-600 hover:text-green-800 hover:bg-green-50 hover:shadow-sm active:bg-green-100'
+                    }`}
+                >
+                  <span className="text-sm leading-none">{cat.icon}</span>
+                  <span>{cat.label}</span>
+                  <CountBadge cat={cat} active={active} size="md" />
+                  {i === 0 && (
+                    <span className={`ml-0.5 text-[9px] border rounded px-1 py-0.5 leading-none select-none font-mono font-normal
+                      ${active ? 'border-green-500/60 text-green-200' : 'border-gray-400 text-gray-500'}`}>
+                      Tab
+                    </span>
+                  )}
+                </Link>
+              )
+            })}
           </nav>
 
           {/* ── Category pill tabs — mobile ── */}
@@ -376,21 +437,25 @@ export default function Navbar() {
             className="md:hidden flex items-center gap-1.5 overflow-x-auto scrollbar-hide border-t border-gray-200 py-2 -mx-4 px-4"
             aria-label="Category navigation mobile"
           >
-            {CATEGORIES.map(cat => (
-              <Link
-                key={cat.value}
-                href={catHref(cat)}
-                className={`flex items-center gap-1 text-[11.5px] px-3 py-1.5 whitespace-nowrap
-                  rounded-full border-2 font-semibold shrink-0 transition-all duration-150 active:scale-95
-                  ${isCatActive(cat)
-                    ? 'border-green-800 bg-gradient-to-b from-green-700 to-green-800 text-white shadow-md shadow-green-900/30 -translate-y-px'
-                    : 'border-gray-400 bg-white text-slate-700 hover:border-green-600 hover:text-green-800 hover:bg-green-50 active:bg-green-100'
-                  }`}
-              >
-                <span>{cat.icon}</span>
-                <span>{cat.label}</span>
-              </Link>
-            ))}
+            {CATEGORIES.map(cat => {
+              const active = isCatActive(cat)
+              return (
+                <Link
+                  key={cat.value}
+                  href={catHref(cat)}
+                  className={`flex items-center gap-1 text-[11.5px] px-3 py-1.5 whitespace-nowrap
+                    rounded-full border-2 font-semibold shrink-0 transition-all duration-150 active:scale-95
+                    ${active
+                      ? 'border-green-800 bg-gradient-to-b from-green-700 to-green-800 text-white shadow-md shadow-green-900/30 -translate-y-px'
+                      : 'border-gray-400 bg-white text-slate-700 hover:border-green-600 hover:text-green-800 hover:bg-green-50 active:bg-green-100'
+                    }`}
+                >
+                  <span>{cat.icon}</span>
+                  <span>{cat.label}</span>
+                  <CountBadge cat={cat} active={active} size="sm" />
+                </Link>
+              )
+            })}
           </nav>
         </div>
 
@@ -398,8 +463,6 @@ export default function Navbar() {
         {mobileMenuOpen && (
           <div className="mobile-menu-enter md:hidden border-t border-gray-100 bg-white">
             <div className="px-4 py-4 space-y-4">
-
-              {/* Mobile search */}
               <form onSubmit={handleSearch}>
                 <div className="relative">
                   <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
@@ -419,7 +482,6 @@ export default function Navbar() {
                 </div>
               </form>
 
-              {/* User card */}
               {user && profile && (
                 <div className="flex items-center gap-3 px-3.5 py-3 bg-gradient-to-br from-green-50 to-emerald-50/60 rounded-xl border border-green-100">
                   <UserAvatar size={10} />
@@ -431,7 +493,6 @@ export default function Navbar() {
                 </div>
               )}
 
-              {/* Quick links */}
               {user && (
                 <div className="border-t border-gray-100 pt-3 space-y-0.5">
                   <Link href="/profile" onClick={() => setMobileMenuOpen(false)}
@@ -457,7 +518,6 @@ export default function Navbar() {
                 </div>
               )}
 
-              {/* CTA buttons */}
               <div className="pt-1 space-y-2">
                 {user ? (
                   <>
