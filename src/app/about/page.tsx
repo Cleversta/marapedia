@@ -235,7 +235,7 @@ export default function AboutPage() {
                 <p className="text-xs text-gray-400">marasontleitu@gmail.com</p>
               </div>
             </a>
-            <a href="https://facebook.com/Marapedia" target="_blank" rel="noopener noreferrer"
+            <a href="https://www.facebook.com/profile.php?id=100092171450260" target="_blank" rel="noopener noreferrer"
               className="flex items-center gap-3 p-4 bg-white border border-gray-200 rounded-xl hover:border-blue-300 hover:shadow-sm transition-all group">
               <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center text-xl flex-shrink-0">📘</div>
               <div>
