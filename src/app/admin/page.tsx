@@ -101,13 +101,15 @@ export default function AdminPage() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
-      <div className="flex items-center justify-between mb-6">
+
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-6">
         <h1 className="font-display text-2xl font-bold">⚙️ Admin Panel</h1>
         <span className="text-sm text-gray-400">Logged in as <strong>{profile?.username}</strong></span>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-8">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4 mb-8">
         {[
           { label: 'Total Articles', value: stats.total,     color: 'bg-blue-50 text-blue-800 border-blue-200' },
           { label: 'Published',      value: stats.published, color: 'bg-green-50 text-green-800 border-green-200' },
@@ -124,10 +126,10 @@ export default function AdminPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-0 border-b border-gray-200 mb-6">
+      <div className="flex gap-0 border-b border-gray-200 mb-6 overflow-x-auto">
         {(['articles', 'photos', 'users'] as Tab[]).map(t => (
           <button key={t} onClick={() => setTab(t)}
-            className={`px-5 py-2.5 text-sm capitalize border-b-2 transition-colors ${
+            className={`px-5 py-2.5 text-sm capitalize border-b-2 transition-colors whitespace-nowrap ${
               tab === t ? 'border-green-700 text-green-700 font-medium' : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}>
             {t}{t === 'photos' && ` (${photos.length})`}
@@ -143,8 +145,8 @@ export default function AdminPage() {
             const cat = getCategoryInfo(article.category)
             const typeLabel = getArticleTypeLabel(article.category, (article as any).article_type)
             return (
-              <div key={article.id} className="bg-white border border-gray-200 rounded-xl px-4 py-3 flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3 flex-1 min-w-0">
+              <div key={article.id} className="bg-white border border-gray-200 rounded-xl px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
                   <span>{cat.icon}</span>
                   <div className="min-w-0">
                     <Link href={`/articles/${article.slug}`}
@@ -160,7 +162,7 @@ export default function AdminPage() {
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span className={`text-xs px-2 py-0.5 rounded-full ${
                     article.status === 'published' ? 'bg-green-100 text-green-700'
                     : article.status === 'draft' ? 'bg-gray-100 text-gray-500'
@@ -196,9 +198,8 @@ export default function AdminPage() {
             <div className="text-center py-12 text-gray-400 text-sm">No albums yet.</div>
           )}
           {photos.map(album => (
-            <div key={album.id} className="bg-white border border-gray-200 rounded-xl px-4 py-3 flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3 flex-1 min-w-0">
-                {/* Thumbnail */}
+            <div key={album.id} className="bg-white border border-gray-200 rounded-xl px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
                 <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 shrink-0">
                   {album.thumbnail_url
                     ? <img src={album.thumbnail_url} alt="" className="w-full h-full object-cover" />
@@ -207,7 +208,7 @@ export default function AdminPage() {
                 </div>
                 <div className="min-w-0">
                   <p className="font-medium text-sm truncate">{album.title}</p>
-                  <p className="text-xs text-gray-400 flex items-center gap-2">
+                  <p className="text-xs text-gray-400 flex items-center gap-2 flex-wrap">
                     <span>By {album.profiles?.username ?? 'Unknown'}</span>
                     <span>·</span>
                     <span>{album.photo_images?.length ?? 0} photos</span>
@@ -216,7 +217,7 @@ export default function AdminPage() {
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-2 flex-wrap">
                 <span className={`text-xs px-2 py-0.5 rounded-full ${
                   album.is_public ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
                 }`}>
@@ -244,9 +245,9 @@ export default function AdminPage() {
       {tab === 'users' && (
         <div className="flex flex-col gap-2">
           {users.map(user => (
-            <div key={user.id} className="bg-white border border-gray-200 rounded-xl px-4 py-3 flex items-center justify-between gap-4">
+            <div key={user.id} className="bg-white border border-gray-200 rounded-xl px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-full bg-green-100 text-green-800 flex items-center justify-center text-sm font-bold">
+                <div className="w-9 h-9 rounded-full bg-green-100 text-green-800 flex items-center justify-center text-sm font-bold shrink-0">
                   {user.username[0].toUpperCase()}
                 </div>
                 <div>
@@ -254,14 +255,14 @@ export default function AdminPage() {
                   <p className="text-xs text-gray-400">{user.full_name ?? ''} · Joined {timeAgo(user.created_at)}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <span className={`text-xs px-2 py-0.5 rounded-full ${
                   user.role === 'admin'  ? 'bg-purple-100 text-purple-700' :
                   user.role === 'editor' ? 'bg-blue-100 text-blue-700' :
                                            'bg-gray-100 text-gray-500'
                 }`}>{user.role}</span>
                 {user.id !== profile?.id && (
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1 flex-wrap">
                     {user.role === 'member' && (
                       <button onClick={() => setUserRole(user.id, 'editor')}
                         className="text-xs px-2 py-1 border border-blue-200 text-blue-600 rounded-lg hover:bg-blue-50">

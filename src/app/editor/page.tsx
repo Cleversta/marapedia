@@ -91,8 +91,9 @@ export default function EditorPage() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8">
+
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-6">
         <div>
           <h1 className="font-display text-2xl font-bold">✏️ Editor Panel</h1>
           <p className="text-sm text-gray-500 mt-0.5">Review and publish member submissions</p>
@@ -120,14 +121,14 @@ export default function EditorPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-0 border-b border-gray-200 mb-6">
+      <div className="flex gap-0 border-b border-gray-200 mb-6 overflow-x-auto">
         {([
           { key: 'drafts',    label: `Pending Review (${drafts.length})` },
           { key: 'published', label: `Published (${published.length})` },
           { key: 'photos',    label: `Photos (${photos.length})` },
         ] as { key: Tab; label: string }[]).map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
-            className={`px-5 py-2.5 text-sm border-b-2 transition-colors ${
+            className={`px-5 py-2.5 text-sm border-b-2 transition-colors whitespace-nowrap ${
               tab === t.key ? 'border-green-700 text-green-700 font-medium' : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}>
             {t.label}
@@ -146,9 +147,9 @@ export default function EditorPage() {
             const cat = getCategoryInfo(article.category)
             const typeLabel = getArticleTypeLabel(article.category, (article as any).article_type)
             return (
-              <div key={article.id} className="bg-white border border-gray-200 rounded-xl px-4 py-3 flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <span className="text-lg">{cat.icon}</span>
+              <div key={article.id} className="bg-white border border-gray-200 rounded-xl px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className="text-lg shrink-0">{cat.icon}</span>
                   <div className="min-w-0">
                     <Link href={`/articles/${article.slug}`}
                       className="font-medium text-sm truncate block hover:text-green-700 hover:underline transition-colors">
@@ -162,7 +163,7 @@ export default function EditorPage() {
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">Draft</span>
                   <button onClick={() => publishArticle(article.id)}
                     className="text-xs px-2 py-1 bg-green-700 text-white rounded-lg hover:bg-green-800">Publish</button>
@@ -186,9 +187,9 @@ export default function EditorPage() {
             const cat = getCategoryInfo(article.category)
             const typeLabel = getArticleTypeLabel(article.category, (article as any).article_type)
             return (
-              <div key={article.id} className="bg-white border border-gray-200 rounded-xl px-4 py-3 flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <span className="text-lg">{cat.icon}</span>
+              <div key={article.id} className="bg-white border border-gray-200 rounded-xl px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className="text-lg shrink-0">{cat.icon}</span>
                   <div className="min-w-0">
                     <Link href={`/articles/${article.slug}`}
                       className="font-medium text-sm truncate block hover:text-green-700 hover:underline transition-colors">
@@ -203,7 +204,7 @@ export default function EditorPage() {
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700">Published</span>
                   <button onClick={() => unpublishArticle(article.id)}
                     className="text-xs px-2 py-1 border border-gray-200 rounded-lg hover:bg-gray-50">Unpublish</button>
@@ -229,8 +230,8 @@ export default function EditorPage() {
             <div className="text-center py-12 text-gray-400 text-sm">No photo albums yet.</div>
           )}
           {photos.map(album => (
-            <div key={album.id} className="bg-white border border-gray-200 rounded-xl px-4 py-3 flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3 flex-1 min-w-0">
+            <div key={album.id} className="bg-white border border-gray-200 rounded-xl px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
                 <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 shrink-0">
                   {album.thumbnail_url
                     ? <img src={album.thumbnail_url} alt="" className="w-full h-full object-cover" />
@@ -239,7 +240,7 @@ export default function EditorPage() {
                 </div>
                 <div className="min-w-0">
                   <p className="font-medium text-sm truncate">{album.title}</p>
-                  <p className="text-xs text-gray-400 flex items-center gap-2">
+                  <p className="text-xs text-gray-400 flex items-center gap-2 flex-wrap">
                     <span>By {album.profiles?.username ?? 'Unknown'}</span>
                     <span>·</span>
                     <span>{album.photo_images?.length ?? 0} photos</span>
@@ -248,7 +249,7 @@ export default function EditorPage() {
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-2 flex-wrap">
                 <span className={`text-xs px-2 py-0.5 rounded-full ${
                   album.is_public ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
                 }`}>

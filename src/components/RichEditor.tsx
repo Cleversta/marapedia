@@ -138,26 +138,34 @@ export default function RichEditor({ content, onChange, placeholder = 'Write her
     setShowLinkInput(v => !v)
   }
 
-  function applyLink() {
-    if (!editor) return
-    const url = linkUrl.trim()
-    let chain = editor.chain().focus()
-    if (savedSelection && savedSelection.from !== savedSelection.to) {
-      chain = (chain as any).setTextSelection(savedSelection)
-    }
-    if (!url) {
-      chain.unsetLink().run()
-      setAppliedLink('')
-      setShowLinkInput(false)
-      setLinkUrl('')
-    } else {
-      const href = url.startsWith('http') ? url : `https://${url}`
-      chain.setLink({ href }).run()
-      setLinkUrl(href)
-      setAppliedLink(href)
-    }
-    setSavedSelection(null)
+function applyLink() {
+  if (!editor) return
+  const url = linkUrl.trim()
+  let chain = editor.chain().focus()
+  if (savedSelection && savedSelection.from !== savedSelection.to) {
+    chain = (chain as any).setTextSelection(savedSelection)
   }
+  if (!url) {
+    chain.unsetLink().run()
+    setAppliedLink('')
+    setShowLinkInput(false)
+    setLinkUrl('')
+  } else {
+    const href = url.startsWith('http') ? url : `https://${url}`
+    chain.setLink({ href }).run()
+    setLinkUrl(href)
+    setAppliedLink(href)
+
+    // ✅ Fix: move cursor to AFTER the link, then close the bar
+    if (savedSelection) {
+      editor.chain().focus().setTextSelection(savedSelection.to).run()
+    }
+    setShowLinkInput(false)   // ✅ close bar so user can type immediately
+    setLinkUrl('')
+    setAppliedLink('')
+  }
+  setSavedSelection(null)
+}
 
   function removeLink() {
     editor?.chain().focus().unsetLink().run()
