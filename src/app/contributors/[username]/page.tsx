@@ -1,3 +1,6 @@
+// This page shows a contributor's profile and their published articles.
+// It uses caching for both the profile and articles, with a revalidation time of 10 minutes.
+//lib/contributors/[username]/page.tsx
 import { unstable_cache } from 'next/cache'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
