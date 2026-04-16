@@ -9,6 +9,7 @@ import PoemViewer from '@/components/PoemViewer'
 import ShareButtons from '@/components/ShareButton'
 import FavoriteButton from '@/components/FavoriteButton'   // ← NEW
 import type { Article } from '@/types'
+import CommentsSection from '@/components/CommentsSection'
 
 // ─── (ARTICLE_STYLES unchanged — paste your original const here) ─────────────
 const ARTICLE_STYLES = `
@@ -378,26 +379,28 @@ export default function ArticleDetailClient({ article }: { article: Article }) {
           )}
 
           {renderContent()}
-
-          <footer className="mt-16 pt-6 border-t border-stone-200 space-y-4">
-            {/* ── Share row ── */}
-            <ShareButtons
-              url={`https://marapedia.org/articles/${article.slug}`}
-              title={translation?.title ?? article.slug}
-            />
-
-            <div className="flex items-center justify-between flex-wrap gap-3">
-              <p className="text-xs text-stone-400 flex items-center gap-1.5">
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                Updated {timeAgo(article.updated_at ?? article.created_at)}
-              </p>
-              <Link href="/" className="text-xs text-green-700 hover:text-green-800 font-medium transition-colors">
-                ← Marapedia
-              </Link>
-            </div>
-          </footer>
+<footer className="mt-16 pt-6 border-t border-stone-200 space-y-4">
+  {/* ── Share row ── */}
+  <ShareButtons
+    url={`https://marapedia.org/articles/${article.slug}`}
+    title={translation?.title ?? article.slug}
+  />
+ 
+  {/* ── Likes & Comments ── */}
+  <CommentsSection articleId={article.id} />   {/* ← ADD THIS LINE */}
+ 
+  <div className="flex items-center justify-between flex-wrap gap-3">
+    <p className="text-xs text-stone-400 flex items-center gap-1.5">
+      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      Updated {timeAgo(article.updated_at ?? article.created_at)}
+    </p>
+    <Link href="/" className="text-xs text-green-700 hover:text-green-800 font-medium transition-colors">
+      ← Marapedia
+    </Link>
+  </div>
+</footer>
         </main>
       </div>
     </>
