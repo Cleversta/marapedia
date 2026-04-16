@@ -93,72 +93,95 @@ export default function CommentsSection({ articleId }: Props) {
     })
   }, [])
 
-  // ── Load likes & comments ───────────────────────────────────────────────────
-  const load = useCallback(async () => {
-    const fp = getFingerprint()
+// ── Load likes & comments ───────────────────────────────────────────────────
+const load = useCallback(async () => {
+  const fp = getFingerprint()
+  const { data: { session } } = await supabase.auth.getSession()
+  const uid = session?.user?.id ?? null
 
-    const [{ count }, { data: myLike }, { data: cmts }] = await Promise.all([
-      supabase
+  // Build the "did I like this?" query based on auth state
+  const myLikeQuery = uid
+    ? supabase
         .from('article_likes')
-        .select('*', { count: 'exact', head: true })
-        .eq('article_id', articleId),
-
-      supabase
+        .select('id')
+        .eq('article_id', articleId)
+        .eq('user_id', uid)
+        .maybeSingle()
+    : supabase
         .from('article_likes')
         .select('id')
         .eq('article_id', articleId)
         .eq('fingerprint', fp)
-        .maybeSingle(),
+        .is('user_id', null)
+        .maybeSingle()
 
-      supabase
-        .from('article_comments')
-        .select('id, display_name, body, created_at, user_id, profiles(avatar_url)')
-        .eq('article_id', articleId)
-        .order('created_at', { ascending: false })
-        .limit(50),
-    ])
+  const [{ count }, { data: myLike }, { data: cmts }] = await Promise.all([
+    supabase
+      .from('article_likes')
+      .select('*', { count: 'exact', head: true })
+      .eq('article_id', articleId),
 
-    setLikeCount(count ?? 0)
-    setLiked(!!myLike)
-    setComments(
-      (cmts ?? []).map((c: any) => ({
-        ...c,
-        avatar_url: c.profiles?.avatar_url ?? null,
-      }))
-    )
-  }, [articleId])
+    myLikeQuery,
+
+    supabase
+      .from('article_comments')
+      .select('id, display_name, body, created_at, user_id, profiles(avatar_url)')
+      .eq('article_id', articleId)
+      .order('created_at', { ascending: false })
+      .limit(50),
+  ])
+
+  setLikeCount(count ?? 0)
+  setLiked(!!myLike)
+  setComments(
+    (cmts ?? []).map((c: any) => ({
+      ...c,
+      avatar_url: c.profiles?.avatar_url ?? null,
+    }))
+  )
+}, [articleId])
 
   useEffect(() => {
     load()
   }, [load])
+// ── Toggle like ─────────────────────────────────────────────────────────────
+async function toggleLike() {
+  if (likeLoading) return
+  const fp = getFingerprint()
+  const { data: { session } } = await supabase.auth.getSession()
+  const uid = session?.user?.id ?? null
+  setLikeLoading(true)
 
-  // ── Toggle like ─────────────────────────────────────────────────────────────
-  async function toggleLike() {
-    if (likeLoading) return
-    const fp = getFingerprint()
-    setLikeLoading(true)
+  if (liked) {
+    const query = supabase
+      .from('article_likes')
+      .delete()
+      .eq('article_id', articleId)
 
-    if (liked) {
-      const { error } = await supabase
-        .from('article_likes')
-        .delete()
-        .eq('article_id', articleId)
-        .eq('fingerprint', fp)
-      if (!error) {
-        setLiked(false)
-        setLikeCount((c) => Math.max(0, c - 1))
-      }
-    } else {
-      const { error } = await supabase
-        .from('article_likes')
-        .insert({ article_id: articleId, fingerprint: fp })
-      if (!error) {
-        setLiked(true)
-        setLikeCount((c) => c + 1)
-      }
+    const { error } = uid
+      ? await query.eq('user_id', uid)
+      : await query.eq('fingerprint', fp).is('user_id', null)
+
+    if (!error) {
+      setLiked(false)
+      setLikeCount((c) => Math.max(0, c - 1))
     }
-    setLikeLoading(false)
+  } else {
+    const { error } = await supabase
+      .from('article_likes')
+      .insert({
+        article_id: articleId,
+        fingerprint: fp,
+        user_id: uid,   // ← store user_id when logged in
+      })
+
+    if (!error) {
+      setLiked(true)
+      setLikeCount((c) => c + 1)
+    }
   }
+  setLikeLoading(false)
+}
 
   // ── Post comment ─────────────────────────────────────────────────────────────
   async function postComment() {
