@@ -140,7 +140,7 @@ export default function SongEditor({ content, onChange, language }: Props) {
         onChange(serialize(sections, meta))
       }
     }
-  }, [])
+  }, [content, meta, onChange, sections])
 
   function toggleSection(id: string) {
     setExpandedSections(prev => {

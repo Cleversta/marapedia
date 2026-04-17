@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { CATEGORIES } from '@/lib/utils'
 import type { Profile } from '@/types'
+import NotificationBell from '@/components/NotificationBell'
 
 export default function Navbar() {
   const router = useRouter()
@@ -293,6 +294,8 @@ export default function Navbar() {
                     </svg>
                     Contribute
                   </Link>
+                  
+                  {user && <NotificationBell userId={user.id} />}
 
                   <div className="relative" ref={menuRef}>
                     <button
