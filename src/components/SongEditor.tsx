@@ -17,6 +17,7 @@ interface SongMeta {
   reference: string
   timeSignature: string
   songNumber: string
+  youtubeUrl: string  // ← NEW
 }
 
 interface Props {
@@ -92,7 +93,7 @@ function htmlToSections(html: string): Section[] {
 }
 
 function htmlToMeta(html: string): SongMeta {
-  const empty: SongMeta = { key: '', writer: '', singer: '', reference: '', timeSignature: '', songNumber: '' }
+  const empty: SongMeta = { key: '', writer: '', singer: '', reference: '', timeSignature: '', songNumber: '', youtubeUrl: '' }
   const match = html?.match(/<!--meta:(.*?)-->/)
   if (!match) return empty
   try { return { ...empty, ...JSON.parse(match[1]) } } catch { return empty }
@@ -114,6 +115,20 @@ const LANG_PLACEHOLDERS: Record<Language, string> = {
   mizo:    '',
 }
 
+function extractYouTubeId(url: string): string | null {
+  const patterns = [
+    /youtube\.com\/watch\?(?:.*&)?v=([a-zA-Z0-9_-]{11})/,
+    /youtu\.be\/([a-zA-Z0-9_-]{11})/,
+    /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/,
+    /youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/,
+  ]
+  for (const p of patterns) {
+    const m = url.match(p)
+    if (m) return m[1]
+  }
+  return null
+}
+
 export default function SongEditor({ content, onChange, language }: Props) {
   const [sections, setSections] = useState<Section[]>(() => {
     const parsed = htmlToSections(content)
@@ -128,7 +143,7 @@ export default function SongEditor({ content, onChange, language }: Props) {
 
   const [showAddMenu, setShowAddMenu] = useState(false)
   const [showMeta, setShowMeta] = useState(false)
-  const [showChords, setShowChords] = useState(false) // ← default off
+  const [showChords, setShowChords] = useState(false)
   const [expandedSections, setExpandedSections] = useState<Set<string>>(
     () => new Set(sections.map(s => s.id))
   )
@@ -197,6 +212,10 @@ export default function SongEditor({ content, onChange, language }: Props) {
     })
   }
 
+  // Detect if the youtubeUrl looks valid enough to show a preview badge
+  const hasYouTube = meta.youtubeUrl.trim().length > 0 &&
+    (meta.youtubeUrl.includes('youtube.com') || meta.youtubeUrl.includes('youtu.be'))
+
   const placeholder = LANG_PLACEHOLDERS[language] ?? LANG_PLACEHOLDERS['english']
   const totalLines = sections.reduce((a, s) => a + s.content.split('\n').filter(l => l.trim()).length, 0)
   const hasChords = sections.some(s => s.chords.trim())
@@ -255,7 +274,7 @@ export default function SongEditor({ content, onChange, language }: Props) {
                 d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             Song details
-            {(meta.key || meta.writer || meta.songNumber) && (
+            {(meta.key || meta.writer || meta.songNumber || hasYouTube) && (
               <span className="w-1.5 h-1.5 rounded-full bg-blue-500 ml-0.5" />
             )}
           </button>
@@ -326,6 +345,56 @@ export default function SongEditor({ content, onChange, language }: Props) {
                 placeholder="e.g. Psalm 23:1"
                 className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-400/10 bg-gray-50 focus:bg-white transition-all" />
             </div>
+
+{/* ── YouTube URL — spans full width ── */}
+<div className="col-span-2 md:col-span-3">
+  <label className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+    <svg className="w-3.5 h-3.5 text-red-500" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+    </svg>
+    YouTube / Video URL
+  </label>
+  <div className="flex items-center gap-2">
+    <input
+      type="url"
+      value={meta.youtubeUrl}
+      onChange={e => updateMeta('youtubeUrl', e.target.value)}
+      placeholder="https://www.youtube.com/watch?v=..."
+      className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-red-300 focus:ring-2 focus:ring-red-400/10 bg-gray-50 focus:bg-white transition-all"
+    />
+    {meta.youtubeUrl && (
+      <button
+        type="button"
+        onClick={() => updateMeta('youtubeUrl', '')}
+        className="text-gray-300 hover:text-red-400 transition-colors text-xs px-1"
+      >
+        × clear
+      </button>
+    )}
+  </div>
+
+  {/* ── Live preview — shows instantly when URL is valid ── */}
+  {hasYouTube && (() => {
+    const previewId = extractYouTubeId(meta.youtubeUrl)
+    return previewId ? (
+      <div className="mt-3 rounded-xl overflow-hidden" style={{ position: 'relative', paddingBottom: '56.25%', height: 0 }}>
+        <iframe
+          key={previewId}
+          src={`https://www.youtube.com/embed/${previewId}`}
+          title="YouTube preview"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+          loading="lazy"
+          style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
+        />
+      </div>
+    ) : null
+  })()}
+
+  <p className="text-[11px] text-gray-400 mt-1.5">
+    Paste a YouTube link — a video player will appear at the top of the song for readers.
+  </p>
+</div>
           </div>
         </div>
       )}
@@ -483,9 +552,17 @@ export default function SongEditor({ content, onChange, language }: Props) {
             </>
           )}
         </div>
-        {hasChords && (
-          <span className="text-amber-500">♪ chords added</span>
-        )}
+        <div className="flex items-center gap-3">
+          {hasChords && <span className="text-amber-500">♪ chords added</span>}
+          {hasYouTube && (
+            <span className="flex items-center gap-1 text-red-500">
+              <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+              </svg>
+              video linked
+            </span>
+          )}
+        </div>
       </div>
     </div>
   )

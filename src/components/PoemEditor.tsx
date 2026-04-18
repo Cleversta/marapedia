@@ -37,6 +37,30 @@ const FontSize = Extension.create({
   },
 })
 
+// ── Shared UI components (outside render) ─────────────────────────────────────
+const Divider = () => <div className="w-px self-stretch bg-stone-200 mx-0.5" />
+
+const Btn = ({ onClick, active, title, children }: {
+  onClick: () => void
+  active?: boolean
+  title: string
+  children: React.ReactNode
+}) => (
+  <button
+    type="button"
+    onMouseDown={e => { e.preventDefault(); onClick() }}
+    title={title}
+    className={`h-7 px-2 text-sm rounded flex items-center justify-center transition-colors
+      ${active
+        ? 'bg-green-100 text-green-700 font-semibold'
+        : 'text-stone-500 hover:bg-stone-100 hover:text-stone-800'
+      }`}
+  >
+    {children}
+  </button>
+)
+
+// ── Constants ─────────────────────────────────────────────────────────────────
 interface Props {
   content: string
   onChange: (html: string) => void
@@ -107,7 +131,7 @@ export default function RichEditor({ content, onChange, placeholder = 'Write her
       setWordCount(text.trim() ? text.trim().split(/\s+/).length : 0)
     },
     editorProps: {
-      attributes: { class: 'ProseMirror', spellcheck: 'false', },
+      attributes: { class: 'ProseMirror', spellcheck: 'false' },
     },
   })
 
@@ -174,28 +198,6 @@ export default function RichEditor({ content, onChange, placeholder = 'Write her
   }
 
   if (!editor) return null
-
-  const Divider = () => <div className="w-px self-stretch bg-stone-200 mx-0.5" />
-
-  const Btn = ({ onClick, active, title, children }: {
-    onClick: () => void
-    active?: boolean
-    title: string
-    children: React.ReactNode
-  }) => (
-    <button
-      type="button"
-      onMouseDown={e => { e.preventDefault(); onClick() }}
-      title={title}
-      className={`h-7 px-2 text-sm rounded flex items-center justify-center transition-colors
-        ${active
-          ? 'bg-green-100 text-green-700 font-semibold'
-          : 'text-stone-500 hover:bg-stone-100 hover:text-stone-800'
-        }`}
-    >
-      {children}
-    </button>
-  )
 
   const isLinkActive = editor.isActive('link')
   const displayUrl = appliedLink.replace(/^https?:\/\//, '').replace(/\/$/, '').slice(0, 40)
@@ -266,7 +268,6 @@ export default function RichEditor({ content, onChange, placeholder = 'Write her
           ref={toolbarRef}
           className="flex flex-wrap items-center gap-0.5 px-3 py-2 border-b border-stone-200/80 bg-stone-50/60"
         >
-          {/* Bold / Italic / Strike */}
           <Btn onClick={() => editor.chain().focus().toggleBold().run()} active={editor.isActive('bold')} title="Bold">
             <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
               <path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/><path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/>
@@ -289,7 +290,6 @@ export default function RichEditor({ content, onChange, placeholder = 'Write her
 
           <Divider />
 
-          {/* Headings */}
           <Btn onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()} active={editor.isActive('heading', { level: 1 })} title="Heading 1">
             <span className="text-xs font-bold">H1</span>
           </Btn>
@@ -415,7 +415,6 @@ export default function RichEditor({ content, onChange, placeholder = 'Write her
 
           <Divider />
 
-          {/* Alignment */}
           <Btn onClick={() => editor.chain().focus().setTextAlign('left').run()} active={editor.isActive({ textAlign: 'left' })} title="Align left">
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <line x1="3" y1="6" x2="21" y2="6" strokeWidth="2" strokeLinecap="round"/>
@@ -440,7 +439,6 @@ export default function RichEditor({ content, onChange, placeholder = 'Write her
 
           <Divider />
 
-          {/* Lists */}
           <Btn onClick={() => editor.chain().focus().toggleBulletList().run()} active={editor.isActive('bulletList')} title="Bullet list">
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <line x1="9" y1="6" x2="20" y2="6" strokeWidth="2" strokeLinecap="round"/>
@@ -470,14 +468,12 @@ export default function RichEditor({ content, onChange, placeholder = 'Write her
 
           <Divider />
 
-          {/* Horizontal rule */}
           <Btn onClick={() => editor.chain().focus().setHorizontalRule().run()} active={false} title="Horizontal divider">
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <line x1="3" y1="12" x2="21" y2="12" strokeWidth="2" strokeLinecap="round"/>
             </svg>
           </Btn>
 
-          {/* Link */}
           <Btn onClick={openLinkInput} active={isLinkActive} title={isLinkActive ? 'Edit link' : 'Insert link'}>
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -487,7 +483,6 @@ export default function RichEditor({ content, onChange, placeholder = 'Write her
 
           <Divider />
 
-          {/* Undo / Redo */}
           <Btn onClick={() => editor.chain().focus().undo().run()} active={false} title="Undo">
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />

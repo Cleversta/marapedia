@@ -37,6 +37,30 @@ const FontSize = Extension.create({
   },
 })
 
+// ── Shared UI components (outside render) ─────────────────────────────────────
+const Divider = () => <div className="w-px self-stretch bg-gray-200 mx-0.5" />
+
+const Btn = ({ onClick, active, title, children }: {
+  onClick: () => void
+  active?: boolean
+  title: string
+  children: React.ReactNode
+}) => (
+  <button
+    type="button"
+    onMouseDown={e => { e.preventDefault(); onClick() }}
+    title={title}
+    className={`h-7 px-2 text-sm rounded flex items-center justify-center transition-colors
+      ${active
+        ? 'bg-green-100 text-green-800 font-semibold'
+        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+      }`}
+  >
+    {children}
+  </button>
+)
+
+// ── Constants ─────────────────────────────────────────────────────────────────
 interface Props {
   content: string
   onChange: (html: string) => void
@@ -102,7 +126,7 @@ export default function RichEditor({ content, onChange, placeholder = 'Write her
     content,
     onUpdate: ({ editor }) => onChange(editor.getHTML()),
     editorProps: {
-      attributes: { class: 'ProseMirror' , spellcheck: 'false',  },
+      attributes: { class: 'ProseMirror', spellcheck: 'false' },
     },
   })
 
@@ -113,7 +137,6 @@ export default function RichEditor({ content, onChange, placeholder = 'Write her
     }
   }, [content, editor])
 
-  // Close dropdown when clicking outside the toolbar
   useEffect(() => {
     function handlePointerDown(e: PointerEvent) {
       if (toolbarRef.current && !toolbarRef.current.contains(e.target as Node)) {
@@ -138,34 +161,32 @@ export default function RichEditor({ content, onChange, placeholder = 'Write her
     setShowLinkInput(v => !v)
   }
 
-function applyLink() {
-  if (!editor) return
-  const url = linkUrl.trim()
-  let chain = editor.chain().focus()
-  if (savedSelection && savedSelection.from !== savedSelection.to) {
-    chain = (chain as any).setTextSelection(savedSelection)
-  }
-  if (!url) {
-    chain.unsetLink().run()
-    setAppliedLink('')
-    setShowLinkInput(false)
-    setLinkUrl('')
-  } else {
-    const href = url.startsWith('http') ? url : `https://${url}`
-    chain.setLink({ href }).run()
-    setLinkUrl(href)
-    setAppliedLink(href)
-
-    // ✅ Fix: move cursor to AFTER the link, then close the bar
-    if (savedSelection) {
-      editor.chain().focus().setTextSelection(savedSelection.to).run()
+  function applyLink() {
+    if (!editor) return
+    const url = linkUrl.trim()
+    let chain = editor.chain().focus()
+    if (savedSelection && savedSelection.from !== savedSelection.to) {
+      chain = (chain as any).setTextSelection(savedSelection)
     }
-    setShowLinkInput(false)   // ✅ close bar so user can type immediately
-    setLinkUrl('')
-    setAppliedLink('')
+    if (!url) {
+      chain.unsetLink().run()
+      setAppliedLink('')
+      setShowLinkInput(false)
+      setLinkUrl('')
+    } else {
+      const href = url.startsWith('http') ? url : `https://${url}`
+      chain.setLink({ href }).run()
+      setLinkUrl(href)
+      setAppliedLink(href)
+      if (savedSelection) {
+        editor.chain().focus().setTextSelection(savedSelection.to).run()
+      }
+      setShowLinkInput(false)
+      setLinkUrl('')
+      setAppliedLink('')
+    }
+    setSavedSelection(null)
   }
-  setSavedSelection(null)
-}
 
   function removeLink() {
     editor?.chain().focus().unsetLink().run()
@@ -176,28 +197,6 @@ function applyLink() {
   }
 
   if (!editor) return null
-
-  const Divider = () => <div className="w-px self-stretch bg-gray-200 mx-0.5" />
-
-  const Btn = ({ onClick, active, title, children }: {
-    onClick: () => void
-    active?: boolean
-    title: string
-    children: React.ReactNode
-  }) => (
-    <button
-      type="button"
-      onMouseDown={e => { e.preventDefault(); onClick() }}
-      title={title}
-      className={`h-7 px-2 text-sm rounded flex items-center justify-center transition-colors
-        ${active
-          ? 'bg-green-100 text-green-800 font-semibold'
-          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-        }`}
-    >
-      {children}
-    </button>
-  )
 
   const isLinkActive = editor.isActive('link')
   const displayUrl = appliedLink.replace(/^https?:\/\//, '').replace(/\/$/, '').slice(0, 40)

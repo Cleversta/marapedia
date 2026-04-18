@@ -8,12 +8,28 @@ interface SongMeta {
   reference?: string
   timeSignature?: string
   songNumber?: string
+  youtubeUrl?: string  // ← NEW
 }
 
 interface Section {
   type: string
   label: string
   lines: string[]
+}
+
+// ── YouTube helper ────────────────────────────────────────────────────────────
+function extractYouTubeId(url: string): string | null {
+  const patterns = [
+    /youtube\.com\/watch\?(?:.*&)?v=([a-zA-Z0-9_-]{11})/,
+    /youtu\.be\/([a-zA-Z0-9_-]{11})/,
+    /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/,
+    /youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/,
+  ]
+  for (const p of patterns) {
+    const m = url.match(p)
+    if (m) return m[1]
+  }
+  return null
 }
 
 function parseSongHtml(html: string): { sections: Section[]; meta: SongMeta } {
@@ -75,12 +91,15 @@ export default function SongViewer({ content, title, songMeta = {} }: Props) {
   const combined = { ...meta, ...songMeta }
   const printRef = useRef<HTMLDivElement>(null)
 
+  // Resolve YouTube video ID from meta
+  const videoId = combined.youtubeUrl ? extractYouTubeId(combined.youtubeUrl) : null
+
   async function handleSaveImage() {
     if (!printRef.current) return
     const html2canvas = (await import('html2canvas')).default
     const canvas = await html2canvas(printRef.current, {
       backgroundColor: '#fffef9',
-      scale: 2, // high resolution
+      scale: 2,
       useCORS: true,
     })
     const link = document.createElement('a')
@@ -114,9 +133,44 @@ export default function SongViewer({ content, title, songMeta = {} }: Props) {
           font-size: 0.78rem;
           color: #888;
         }
+        .yt-player-wrap {
+          position: relative;
+          padding-bottom: 56.25%;
+          height: 0;
+          border-radius: 12px;
+          overflow: hidden;
+          box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+        }
+        .yt-player-wrap iframe {
+          position: absolute;
+          top: 0; left: 0;
+          width: 100%; height: 100%;
+          border: none;
+        }
       `}</style>
 
       <div className="max-w-xl mx-auto px-1">
+
+        {/* ── YouTube player (if URL is set) ── */}
+        {videoId && (
+          <div className="mb-6">
+            <div className="flex items-center gap-2 mb-2">
+              <svg className="w-4 h-4 text-red-500" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+              </svg>
+              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Watch on YouTube</span>
+            </div>
+            <div className="yt-player-wrap">
+              <iframe
+                src={`https://www.youtube.com/embed/${videoId}`}
+                title={title}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                loading="lazy"
+              />
+            </div>
+          </div>
+        )}
 
         {/* ── Save as Image button ── */}
         <div className="flex justify-end mb-4">
@@ -132,7 +186,7 @@ export default function SongViewer({ content, title, songMeta = {} }: Props) {
           </button>
         </div>
 
-        {/* ── Printable area ── */}
+        {/* ── Printable lyrics area ── */}
         <div
           ref={printRef}
           style={{
@@ -142,7 +196,7 @@ export default function SongViewer({ content, title, songMeta = {} }: Props) {
             fontFamily: "'Lora', Georgia, serif",
           }}
         >
-          {/* Title inside image */}
+          {/* Title */}
           <h2 style={{ fontSize: '1.4rem', fontWeight: 700, color: '#1c1917', marginBottom: '4px' }}>
             {title}
           </h2>

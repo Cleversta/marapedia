@@ -7,11 +7,48 @@ import { getCategoryInfo, formatDate, timeAgo, getArticleTypeLabel } from '@/lib
 import SongViewer from '@/components/SongViewer'
 import PoemViewer from '@/components/PoemViewer'
 import ShareButtons from '@/components/ShareButton'
-import FavoriteButton from '@/components/FavoriteButton'   // ← NEW
+import FavoriteButton from '@/components/FavoriteButton'
 import type { Article } from '@/types'
 import CommentsSection from '@/components/CommentsSection'
 
-// ─── (ARTICLE_STYLES unchanged — paste your original const here) ─────────────
+// ─── YouTube helpers ──────────────────────────────────────────────────────────
+function extractYouTubeId(url: string): string | null {
+  const patterns = [
+    /youtube\.com\/watch\?(?:.*&)?v=([a-zA-Z0-9_-]{11})/,
+    /youtu\.be\/([a-zA-Z0-9_-]{11})/,
+    /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/,
+    /youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/,
+  ]
+  for (const p of patterns) {
+    const m = url.match(p)
+    if (m) return m[1]
+  }
+  return null
+}
+
+function injectYouTubeEmbeds(html: string): string {
+  // Finds any <a> tag whose href contains youtube.com or youtu.be and injects
+  // an iframe embed directly after it.
+  return html.replace(
+    /<a([^>]+)href="([^"]*(?:youtube\.com|youtu\.be)[^"]*)"([^>]*)>([\s\S]*?)<\/a>/gi,
+    (match, before, url, after, text) => {
+      const videoId = extractYouTubeId(url)
+      if (!videoId) return match
+      const safeTitle = text.replace(/<[^>]+>/g, '').replace(/"/g, '&quot;') || 'YouTube video'
+      return `${match}<div class="yt-embed-wrap">
+        <iframe
+          src="https://www.youtube.com/embed/${videoId}"
+          title="${safeTitle}"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowfullscreen
+          loading="lazy"
+        ></iframe>
+      </div>`
+    }
+  )
+}
+
+// ─── Styles ───────────────────────────────────────────────────────────────────
 const ARTICLE_STYLES = `
 @import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap');
 
@@ -97,6 +134,27 @@ const ARTICLE_STYLES = `
 .article-body td { padding: 0.65em 1em; border-bottom: 1px solid #f5f5f4; color: #44403c; vertical-align: top; }
 .article-body tr:last-child td { border-bottom: none; }
 .article-body tr:hover td { background: #fafaf9; }
+
+/* ── YouTube embed ── */
+.yt-embed-wrap {
+  position: relative;
+  padding-bottom: 56.25%;
+  height: 0;
+  margin: 1.5em 0 2em;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+}
+.yt-embed-wrap iframe {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  border: none;
+  border-radius: 12px;
+  margin: 0;
+  box-shadow: none;
+}
+
 .img-thumb { cursor: zoom-in; overflow: hidden; background: #e7e5e4; position: relative; }
 .img-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
 .img-thumb:hover img { transform: scale(1.07); }
@@ -199,7 +257,13 @@ export default function ArticleDetailClient({ article }: { article: Article }) {
     }
     if (article.category === 'songs') return <SongViewer content={translation.content} title={translation.title ?? ''} />
     if (article.category === 'poems') return <PoemViewer content={translation.content} />
-    return <div className="article-body" dangerouslySetInnerHTML={{ __html: translation.content }} />
+    // For all other articles: inject YouTube embeds automatically
+    return (
+      <div
+        className="article-body"
+        dangerouslySetInnerHTML={{ __html: injectYouTubeEmbeds(translation.content) }}
+      />
+    )
   }
 
   return (
@@ -379,28 +443,29 @@ export default function ArticleDetailClient({ article }: { article: Article }) {
           )}
 
           {renderContent()}
-<footer className="mt-16 pt-6 border-t border-stone-200 space-y-4">
-  {/* ── Share row ── */}
-  <ShareButtons
-    url={`https://marapedia.org/articles/${article.slug}`}
-    title={translation?.title ?? article.slug}
-  />
- 
-  {/* ── Likes & Comments ── */}
-  <CommentsSection articleId={article.id} />   {/* ← ADD THIS LINE */}
- 
-  <div className="flex items-center justify-between flex-wrap gap-3">
-    <p className="text-xs text-stone-400 flex items-center gap-1.5">
-      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-      </svg>
-      Updated {timeAgo(article.updated_at ?? article.created_at)}
-    </p>
-    <Link href="/" className="text-xs text-green-700 hover:text-green-800 font-medium transition-colors">
-      ← Marapedia
-    </Link>
-  </div>
-</footer>
+
+          <footer className="mt-16 pt-6 border-t border-stone-200 space-y-4">
+            {/* ── Share row ── */}
+            <ShareButtons
+              url={`https://marapedia.org/articles/${article.slug}`}
+              title={translation?.title ?? article.slug}
+            />
+
+            {/* ── Likes & Comments ── */}
+            <CommentsSection articleId={article.id} />
+
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <p className="text-xs text-stone-400 flex items-center gap-1.5">
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Updated {timeAgo(article.updated_at ?? article.created_at)}
+              </p>
+              <Link href="/" className="text-xs text-green-700 hover:text-green-800 font-medium transition-colors">
+                ← Marapedia
+              </Link>
+            </div>
+          </footer>
         </main>
       </div>
     </>
