@@ -9,10 +9,8 @@ export async function POST(req: NextRequest) {
     if (secret !== process.env.REVALIDATE_SECRET) {
       return NextResponse.json({ error: 'Invalid secret' }, { status: 401 })
     }
-
-    revalidateTag(`article-${slug}`)  // bust specific article
-    revalidateTag('article')           // bust article lists
-
+revalidateTag(`article-${slug}`, 'max')  // bust specific article
+revalidateTag('article', 'max')           // bust article lists
     return NextResponse.json({ revalidated: true, slug })
   } catch {
     return NextResponse.json({ error: 'Failed to revalidate' }, { status: 500 })
