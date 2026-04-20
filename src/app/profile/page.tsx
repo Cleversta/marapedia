@@ -4,7 +4,6 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { timeAgo, getCategoryInfo } from '@/lib/utils'
-import ArticleCard from '@/components/ArticleCard'
 import type { Profile, Article } from '@/types'
 
 interface PhotoImage {
@@ -23,13 +22,61 @@ interface PhotoGroup {
   photo_images?: PhotoImage[]
 }
 
-interface FavoriteRow {
-  id: string
-  created_at: string
-  article: Article
+// ─── Delete Account Modal ─────────────────────────────────────────────────────
+function DeleteAccountModal({ onClose, onConfirm, deleting }: {
+  onClose: () => void
+  onConfirm: () => void
+  deleting: boolean
+}) {
+  const [typed, setTyped] = useState('')
+  const confirmed = typed === 'DELETE'
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+      <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+        <div className="px-6 py-5 border-b border-gray-100">
+          <h2 className="font-display text-base font-bold text-red-600">Delete Account</h2>
+        </div>
+        <div className="px-6 py-5 space-y-4">
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700 space-y-1">
+            <p className="font-semibold">⚠️ This cannot be undone.</p>
+            <p>Your account will be permanently deleted. Your articles will remain but will be anonymized (shown as deleted user).</p>
+          </div>
+          <div>
+            <label className="block text-sm text-gray-600 mb-1.5">
+              Type <span className="font-mono font-bold text-gray-900">DELETE</span> to confirm
+            </label>
+            <input
+              type="text"
+              value={typed}
+              onChange={e => setTyped(e.target.value)}
+              placeholder="DELETE"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-red-400 font-mono"
+            />
+          </div>
+        </div>
+        <div className="px-6 py-4 border-t border-gray-100 bg-gray-50/60 flex justify-end gap-2">
+          <button
+            onClick={onClose}
+            disabled={deleting}
+            className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700 transition-colors disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={!confirmed || deleting}
+            className="px-5 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 disabled:opacity-40 active:scale-95 transition-all"
+          >
+            {deleting ? 'Deleting…' : 'Delete My Account'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
 }
 
-// ─── Album Edit Modal (unchanged) ────────────────────────────────────────────
+// ─── Album Edit Modal ─────────────────────────────────────────────────────────
 function AlbumEditModal({ album, onClose, onSave }: {
   album: PhotoGroup
   onClose: () => void
@@ -132,7 +179,7 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [articles, setArticles] = useState<Article[]>([])
   const [albums, setAlbums] = useState<PhotoGroup[]>([])
-  const [favorites, setFavorites] = useState<Article[]>([])          // ← NEW
+  const [favorites, setFavorites] = useState<Article[]>([])
   const [editing, setEditing] = useState(false)
   const [form, setForm] = useState({ full_name: '', bio: '' })
   const [saving, setSaving] = useState(false)
@@ -140,7 +187,9 @@ export default function ProfilePage() {
   const [avatarUploading, setAvatarUploading] = useState(false)
   const [avatarError, setAvatarError] = useState('')
   const [editingAlbum, setEditingAlbum] = useState<PhotoGroup | null>(null)
-  const [activeTab, setActiveTab] = useState<'articles' | 'photos' | 'favorites'>('articles')  // ← NEW
+  const [activeTab, setActiveTab] = useState<'articles' | 'photos' | 'favorites'>('articles')
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -149,7 +198,7 @@ export default function ProfilePage() {
       fetchProfile(session.user.id)
       fetchMyArticles(session.user.id)
       fetchMyAlbums(session.user.id)
-      fetchMyFavorites(session.user.id)   // ← NEW
+      fetchMyFavorites(session.user.id)
     })
   }, [])
 
@@ -177,7 +226,6 @@ export default function ProfilePage() {
     setAlbums(data ?? [])
   }
 
-  // ── NEW: fetch favorited articles ──────────────────────────────────────────
   async function fetchMyFavorites(userId: string) {
     const { data } = await supabase
       .from('favorites')
@@ -203,14 +251,9 @@ export default function ProfilePage() {
 
   async function handleUnfavorite(articleId: string) {
     if (!profile) return
-    await supabase
-      .from('favorites')
-      .delete()
-      .eq('user_id', profile.id)
-      .eq('article_id', articleId)
+    await supabase.from('favorites').delete().eq('user_id', profile.id).eq('article_id', articleId)
     setFavorites(prev => prev.filter(a => a.id !== articleId))
   }
-  // ──────────────────────────────────────────────────────────────────────────
 
   async function handleSave() {
     if (!profile) return
@@ -255,6 +298,30 @@ export default function ProfilePage() {
     await supabase.from('profiles').update({ avatar_url: null }).eq('id', profile.id)
     await fetchProfile(profile.id)
     setSuccess('Profile picture removed.'); setTimeout(() => setSuccess(''), 3000)
+  }
+
+  async function handleDeleteAccount() {
+    if (!profile) return
+    setDeleting(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch('/api/account', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({ targetUserId: profile.id }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Failed to delete account')
+      await supabase.auth.signOut()
+      router.push('/?deleted=1')
+    } catch (err: any) {
+      alert(err.message)
+      setDeleting(false)
+      setShowDeleteModal(false)
+    }
   }
 
   async function handleToggleArticleStatus(e: React.MouseEvent, article: Article) {
@@ -391,6 +458,17 @@ export default function ProfilePage() {
             </button>
           </div>
         )}
+
+        {/* ─── Danger zone ──────────────────────────────────────────────────── */}
+        <div className="mt-6 pt-5 border-t border-gray-100 flex items-center justify-between">
+          <p className="text-xs text-gray-400">Danger zone</p>
+          <button
+            onClick={() => setShowDeleteModal(true)}
+            className="text-xs text-red-500 hover:text-red-700 hover:underline transition-colors"
+          >
+            🗑️ Delete my account
+          </button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -399,7 +477,7 @@ export default function ProfilePage() {
           { label: 'Articles',     value: articles.length,                                       color: 'text-gray-800' },
           { label: 'Published',    value: articles.filter(a => a.status === 'published').length, color: 'text-green-700' },
           { label: 'Photo Albums', value: albums.length,                                         color: 'text-pink-600' },
-          { label: 'Saved',        value: favorites.length,                                      color: 'text-red-500' },  // ← CHANGED from Total Photos
+          { label: 'Saved',        value: favorites.length,                                      color: 'text-red-500' },
         ].map(s => (
           <div key={s.label} className="bg-gray-50 rounded-xl p-4 border border-gray-100">
             <p className="text-xs text-gray-400 mb-1">{s.label}</p>
@@ -408,7 +486,7 @@ export default function ProfilePage() {
         ))}
       </div>
 
-      {/* Tabs — now 3 tabs */}
+      {/* Tabs */}
       <div className="flex gap-0 border-b border-gray-200 mb-5">
         {([
           { key: 'articles',  label: `Articles (${articles.length})` },
@@ -551,7 +629,7 @@ export default function ProfilePage() {
         </div>
       )}
 
-      {/* ── NEW: Favorites tab ─────────────────────────────────────────────── */}
+      {/* Favorites tab */}
       {activeTab === 'favorites' && (
         <div>
           <p className="text-sm text-gray-500 mb-4">
@@ -597,7 +675,6 @@ export default function ProfilePage() {
           )}
         </div>
       )}
-      {/* ────────────────────────────────────────────────────────────────────── */}
 
       {/* Album edit modal */}
       {editingAlbum && (
@@ -605,6 +682,15 @@ export default function ProfilePage() {
           album={editingAlbum}
           onClose={() => setEditingAlbum(null)}
           onSave={handleAlbumSaved}
+        />
+      )}
+
+      {/* Delete account modal */}
+      {showDeleteModal && (
+        <DeleteAccountModal
+          onClose={() => setShowDeleteModal(false)}
+          onConfirm={handleDeleteAccount}
+          deleting={deleting}
         />
       )}
     </div>

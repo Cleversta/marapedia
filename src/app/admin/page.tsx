@@ -28,6 +28,7 @@ export default function AdminPage() {
   const [photos, setPhotos] = useState<PhotoGroup[]>([])
   const [stats, setStats] = useState({ total: 0, published: 0, drafts: 0, editors: 0, users: 0, albums: 0 })
   const [loading, setLoading] = useState(true)
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -83,6 +84,30 @@ export default function AdminPage() {
   async function setUserRole(id: string, role: Role) {
     await supabase.from('profiles').update({ role }).eq('id', id)
     setUsers(prev => prev.map(u => u.id === id ? { ...u, role } : u))
+  }
+
+  async function handleDeleteUser(targetUser: Profile) {
+    if (!confirm(`Delete account "${targetUser.username}"? This cannot be undone.\n\nTheir articles will remain but be anonymized.`)) return
+    setDeletingUserId(targetUser.id)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch('/api/account', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({ targetUserId: targetUser.id }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Failed to delete user')
+      setUsers(prev => prev.filter(u => u.id !== targetUser.id))
+      setStats(s => ({ ...s, users: s.users - 1 }))
+    } catch (err: any) {
+      alert(err.message)
+    } finally {
+      setDeletingUserId(null)
+    }
   }
 
   async function togglePhotoPublic(id: string, current: boolean) {
@@ -223,16 +248,12 @@ export default function AdminPage() {
                 }`}>
                   {album.is_public ? 'Public' : 'Hidden'}
                 </span>
-                <button
-                  onClick={() => togglePhotoPublic(album.id, album.is_public)}
-                  className="text-xs px-2 py-1 border border-gray-200 rounded-lg hover:bg-gray-50"
-                >
+                <button onClick={() => togglePhotoPublic(album.id, album.is_public)}
+                  className="text-xs px-2 py-1 border border-gray-200 rounded-lg hover:bg-gray-50">
                   {album.is_public ? 'Hide' : 'Make Public'}
                 </button>
-                <button
-                  onClick={() => deletePhotoGroup(album.id)}
-                  className="text-xs px-2 py-1 border border-red-200 text-red-500 rounded-lg hover:bg-red-50"
-                >
+                <button onClick={() => deletePhotoGroup(album.id)}
+                  className="text-xs px-2 py-1 border border-red-200 text-red-500 rounded-lg hover:bg-red-50">
                   Delete
                 </button>
               </div>
@@ -287,6 +308,14 @@ export default function AdminPage() {
                         Remove Admin
                       </button>
                     )}
+                    {/* ─── Delete user button ─────────────────────────────── */}
+                    <button
+                      onClick={() => handleDeleteUser(user)}
+                      disabled={deletingUserId === user.id}
+                      className="text-xs px-2 py-1 border border-red-200 text-red-500 rounded-lg hover:bg-red-50 disabled:opacity-50 transition-colors"
+                    >
+                      {deletingUserId === user.id ? 'Deleting…' : 'Delete'}
+                    </button>
                   </div>
                 )}
               </div>
