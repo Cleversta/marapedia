@@ -72,7 +72,7 @@ const ARTICLE_STYLES = `
   color: #15803d;
   font-family: 'Lora', Georgia, serif;
 }
-.article-body p { margin-bottom: 1.65em; color: #1c1917; }
+.article-body p:empty { margin-bottom: 1.65em; min-height: 1em; }
 .article-body > p:first-of-type { font-size: 1.125rem; color: #292524; }
 .article-body h1, .article-body h2, .article-body h3, .article-body h4 {
   font-family: 'Lora', serif;

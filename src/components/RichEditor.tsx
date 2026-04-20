@@ -106,7 +106,13 @@ export default function RichEditor({ content, onChange, placeholder = 'Write her
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
-      StarterKit.configure({ link: false }),
+      StarterKit.configure({
+        link: false,
+        paragraph: {
+          HTMLAttributes: {},
+        },
+        gapcursor: false,
+      }),
       Image.configure({ inline: false, allowBase64: true }),
       Link.configure({
         openOnClick: false,
@@ -127,13 +133,17 @@ export default function RichEditor({ content, onChange, placeholder = 'Write her
     onUpdate: ({ editor }) => onChange(editor.getHTML()),
     editorProps: {
       attributes: { class: 'ProseMirror', spellcheck: 'false' },
+      transformPastedHTML(html) { return html },
     },
   })
 
+  // FIX: preserveWhitespace: 'full' prevents TipTap from collapsing empty
+  // paragraphs (blank lines used for spacing) when content is reloaded.
   useEffect(() => {
     if (!editor) return
     if (content !== editor.getHTML() && !editor.isFocused) {
-      editor.commands.setContent(content)
+      // @ts-ignore
+editor.commands.setContent(content, false, { preserveWhitespace: 'full' })
     }
   }, [content, editor])
 
@@ -520,6 +530,7 @@ export default function RichEditor({ content, onChange, placeholder = 'Write her
         .ProseMirror { outline: none; min-height: 180px; }
         .ProseMirror p { margin: 0 0 0.75rem; line-height: 1.7; font-size: 0.9375rem; color: #374151; }
         .ProseMirror p:last-child { margin-bottom: 0; }
+        .ProseMirror p:empty { min-height: 1.2em; }
         .ProseMirror h1 { font-size: 1.5rem; font-weight: 700; margin: 1.25rem 0 0.5rem; color: #111827; }
         .ProseMirror h2 { font-size: 1.25rem; font-weight: 700; margin: 1rem 0 0.4rem; color: #111827; }
         .ProseMirror h3 { font-size: 1.05rem; font-weight: 600; margin: 0.75rem 0 0.35rem; color: #111827; }
