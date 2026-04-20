@@ -17,6 +17,7 @@ export default function Navbar() {
   const [searchFocused, setSearchFocused] = useState(false)
   const [shortcutLabel, setShortcutLabel] = useState('Ctrl K')
   const [categoryCounts, setCategoryCounts] = useState<Record<string, number>>({})
+  const [copied, setCopied] = useState(false)
   const searchRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -90,6 +91,21 @@ export default function Navbar() {
     if (searchQuery.trim()) {
       router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`)
       setSearchQuery('')
+    }
+  }
+
+  async function handleShare() {
+    const shareData = {
+      title: 'Marapedia',
+      text: 'Explore the cultural encyclopedia of the Mara people — history, language, songs, and traditions.',
+      url: 'https://marapedia.org',
+    }
+    if (navigator.share && navigator.canShare?.(shareData)) {
+      try { await navigator.share(shareData) } catch {}
+    } else {
+      await navigator.clipboard.writeText('https://marapedia.org')
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
     }
   }
 
@@ -243,6 +259,8 @@ export default function Navbar() {
 
             {/* ── Menu items ── */}
             <div className="flex-1 overflow-y-auto py-3">
+
+              {/* Account section */}
               <p className="px-5 pt-2 pb-1 text-[10px] font-bold text-gray-400 tracking-[0.15em] uppercase">
                 Account
               </p>
@@ -276,12 +294,55 @@ export default function Navbar() {
 
               <div className="mx-4 my-3 border-t border-gray-200" />
 
+              {/* Contribute */}
               <DrawerItem
                 icon="✍️" label="Contribute Article" subtitle="Share your knowledge"
                 href={pathname.startsWith('/category/')
                   ? `/articles/create?category=${pathname.split('/category/')[1]}`
                   : '/articles/create'}
                 onClick={() => setDrawerOpen(false)} accent="green"
+              />
+
+              {/* Share */}
+              <button
+                onClick={handleShare}
+                className="flex items-center gap-3 mx-3 my-0.5 px-3 py-2.5 rounded-xl w-[calc(100%-24px)]
+                  transition-all duration-150 active:scale-[0.98] group hover:bg-gray-100"
+              >
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center text-base
+                  shadow-sm bg-white border border-gray-200 group-hover:bg-gray-50 transition-colors shrink-0">
+                  {copied ? '✅' : '🔗'}
+                </div>
+                <div className="flex-1 min-w-0 text-left">
+                  <p className="text-[13.5px] font-semibold leading-none mb-0.5 text-gray-800">
+                    {copied ? 'Link Copied!' : 'Share Marapedia'}
+                  </p>
+                  <p className="text-[11px] text-gray-400">
+                    {copied ? 'marapedia.org copied to clipboard' : 'Spread the word about Marapedia'}
+                  </p>
+                </div>
+                {!copied && (
+                  <svg className="w-3.5 h-3.5 flex-shrink-0 text-gray-300 group-hover:text-gray-400 transition-colors"
+                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                )}
+              </button>
+
+              <div className="mx-4 my-3 border-t border-gray-200" />
+
+              {/* About & Privacy */}
+              <p className="px-5 pt-1 pb-1 text-[10px] font-bold text-gray-400 tracking-[0.15em] uppercase">
+                Marapedia
+              </p>
+
+              <DrawerItem
+                icon="📖" label="About" subtitle="Our mission & story"
+                href="/about" onClick={() => setDrawerOpen(false)}
+              />
+              <DrawerItem
+                icon="🔒" label="Privacy Policy" subtitle="How we handle your data"
+                href="/privacy" onClick={() => setDrawerOpen(false)}
               />
             </div>
 
