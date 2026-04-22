@@ -283,7 +283,7 @@ export default function SongViewer({ content, title, songMeta = {} }: Props) {
           {/* Watermark */}
           <div style={{ marginTop: '32px', paddingTop: '16px', borderTop: '1px solid #e7e5e4', textAlign: 'center' }}>
             <span style={{ fontSize: '0.7rem', color: '#ccc', letterSpacing: '0.05em' }}>
-              marapedia.vercel.app
+              marapedia.org
             </span>
           </div>
         </div>
