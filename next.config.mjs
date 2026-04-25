@@ -1,6 +1,22 @@
 // next.config.mjs
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+async redirects() {
+  return [
+    {
+      source: '/:path*',
+      has: [{ type: 'host', value: 'marapedia.vercel.app' }],
+      destination: 'https://marapedia.org/:path*',
+      permanent: true,
+    },
+    {
+      source: '/:path*',
+      has: [{ type: 'host', value: 'www.marapedia.org' }],
+      destination: 'https://marapedia.org/:path*',
+      permanent: true,
+    },
+  ]
+},
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: '*.r2.dev' },
