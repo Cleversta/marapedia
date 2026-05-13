@@ -2,7 +2,11 @@
   "permissions": {
     "allow": [
       "Bash(keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android)",
-      "Bash(keytool -list -v -keystore /home/marason/upload-keystore.jks -alias upload -storepass 15735980marason -keypass 15735980marason)"
+      "Bash(keytool -list -v -keystore /home/marason/upload-keystore.jks -alias upload -storepass 15735980marason -keypass 15735980marason)",
+      "Bash(git remote *)",
+      "Bash(git push *)",
+      "Bash(find /home/marason -name \"*.sql\" 2>/dev/null | head -10 && find /home/marason -name \"supabase\" -type d 2>/dev/null | head -5)",
+      "Read(//home/marason/**)"
     ]
   }
 }

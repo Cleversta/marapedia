@@ -181,7 +181,7 @@ export default function ProfilePage() {
   const [albums, setAlbums] = useState<PhotoGroup[]>([])
   const [favorites, setFavorites] = useState<Article[]>([])
   const [editing, setEditing] = useState(false)
-  const [form, setForm] = useState({ full_name: '', bio: '' })
+  const [form, setForm] = useState({ username: '', full_name: '', bio: '' })
   const [saving, setSaving] = useState(false)
   const [success, setSuccess] = useState('')
   const [avatarUploading, setAvatarUploading] = useState(false)
@@ -205,7 +205,7 @@ export default function ProfilePage() {
   async function fetchProfile(id: string) {
     const { data } = await supabase.from('profiles').select('*').eq('id', id).single()
     setProfile(data)
-    setForm({ full_name: data?.full_name ?? '', bio: data?.bio ?? '' })
+    setForm({ username: data?.username ?? '', full_name: data?.full_name ?? '', bio: data?.bio ?? '' })
   }
 
   async function fetchMyArticles(id: string) {
@@ -258,10 +258,36 @@ export default function ProfilePage() {
   async function handleSave() {
     if (!profile) return
     setSaving(true)
-    await supabase.from('profiles').update({
-      full_name: form.full_name.trim(),
-      bio: form.bio.trim(),
-    }).eq('id', profile.id)
+
+    const newUsername = form.username.trim()
+    if (!newUsername) {
+      setSaving(false)
+      alert('Username cannot be empty.')
+      return
+    }
+
+    if (newUsername !== profile.username) {
+      const { data: taken } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('username', newUsername)
+        .single()
+      if (taken) {
+        setSaving(false)
+        alert('Username already taken. Please choose another.')
+        return
+      }
+    }
+
+    const trimmedName = form.full_name.trim()
+    await Promise.all([
+      supabase.from('profiles').update({
+        username: newUsername,
+        full_name: trimmedName,
+        bio: form.bio.trim(),
+      }).eq('id', profile.id),
+      supabase.auth.updateUser({ data: { full_name: trimmedName, name: trimmedName } }),
+    ])
     await fetchProfile(profile.id)
     setSaving(false)
     setEditing(false)
@@ -441,6 +467,12 @@ export default function ProfilePage() {
 
         {editing && (
           <div className="mt-5 flex flex-col gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
+              <input type="text" value={form.username} onChange={e => setForm(f => ({ ...f, username: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-green-600"
+                placeholder="Your display name" />
+            </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
               <input type="text" value={form.full_name} onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))}
