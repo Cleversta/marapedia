@@ -1,7 +1,7 @@
 import { unstable_cache } from 'next/cache'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
+import { supabaseServer as supabase } from '@/lib/supabase-server'
 import { SITE_URL, SITE_NAME } from '@/lib/config'
 import ArticleDetailClient from './ArticleDetailClient'
 import type { Article } from '@/types'

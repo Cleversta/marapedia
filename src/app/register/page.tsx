@@ -10,7 +10,6 @@ export default function RegisterPage() {
   const [form, setForm] = useState({ email: '', password: '', username: '', full_name: '' })
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
-  const [debug, setDebug] = useState<any>(null)
   const [loading, setLoading] = useState(false)
 
   function update(key: string, val: string) {
@@ -31,7 +30,6 @@ export default function RegisterPage() {
     setLoading(true)
     setError('')
     setSuccess('')
-    setDebug(null)
 
     if (form.password.length < 6) {
       setError('Password must be at least 6 characters.')
@@ -62,8 +60,6 @@ export default function RegisterPage() {
         },
       },
     })
-
-    setDebug(result)
 
     if (result.error) {
       setError(result.error.message)
@@ -103,15 +99,6 @@ export default function RegisterPage() {
           <div className="bg-green-50 border border-green-200 text-green-700 text-sm rounded-lg px-4 py-3 mb-4">
             ✅ {success}
           </div>
-        )}
-
-        {debug && (
-          <details className="mb-4">
-            <summary className="text-xs text-gray-400 cursor-pointer hover:text-gray-600">🐛 Debug info</summary>
-            <pre className="mt-2 text-xs bg-gray-50 border border-gray-200 rounded-lg p-3 overflow-auto max-h-48 text-gray-600">
-              {JSON.stringify(debug, null, 2)}
-            </pre>
-          </details>
         )}
 
         <button

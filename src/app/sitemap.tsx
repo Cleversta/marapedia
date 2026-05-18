@@ -1,5 +1,5 @@
 import { MetadataRoute } from 'next'
-import { supabase } from '@/lib/supabase'
+import { supabaseServer as supabase } from '@/lib/supabase-server'
 import { SITE_URL } from '@/lib/config'
 
 const CATEGORIES = [

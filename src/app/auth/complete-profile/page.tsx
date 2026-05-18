@@ -49,7 +49,7 @@ export default function CompleteProfilePage() {
         id: userId,
         username,
         full_name: form.full_name.trim(),
-        role: 'contributor',
+        role: 'member',
       })
 
     if (upsertError) {

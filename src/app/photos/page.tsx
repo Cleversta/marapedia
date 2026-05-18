@@ -609,6 +609,7 @@ export default function PhotosPage() {
     const { data } = await supabase
       .from('photo_groups')
       .select('*, profiles(username, avatar_url), photo_images(id, url, caption, sort_order)')
+      .eq('is_public', true)
       .order('created_at', { ascending: false })
     if (data) {
       const sorted = data.map(g => ({
