@@ -3,11 +3,13 @@
 import { unstable_cache } from 'next/cache'
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { cookies } from 'next/headers'
+import { createServerClient } from '@supabase/ssr'
 import { supabaseServer as supabase } from '@/lib/supabase-server'
 import { formatDate } from '@/lib/utils'
 import { SITE_NAME } from '@/lib/config'
 
-export const revalidate = 600
+export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
   title: `Contributors — ${SITE_NAME}`,
@@ -221,10 +223,35 @@ function SectionHeading({
   )
 }
 
-export default async function ContributorsPage() {
-  const contributors = await getContributors()
+async function getViewerRole(): Promise<string | null> {
+  const cookieStore = await cookies()
+  const client = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() { return cookieStore.getAll() },
+        setAll(cookiesToSet) {
+          try { cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options)) } catch {}
+        },
+      },
+    }
+  )
+  const { data: { user } } = await client.auth.getUser()
+  if (!user) return null
+  const { data } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+  return data?.role ?? null
+}
 
-  const admins = contributors.filter(c => c.role === 'admin').sort(sortByArticles)
+export default async function ContributorsPage() {
+  const [contributors, viewerRole] = await Promise.all([
+    getContributors(),
+    getViewerRole(),
+  ])
+
+  const isAdmin = viewerRole === 'admin'
+
+  const admins  = contributors.filter(c => c.role === 'admin').sort(sortByArticles)
   const editors = contributors.filter(c => c.role === 'editor').sort(sortByArticles)
   const members = contributors.filter(c => c.role !== 'admin' && c.role !== 'editor').sort(sortByNewest)
 
@@ -244,10 +271,6 @@ export default async function ContributorsPage() {
         {/* Stats */}
         <div className="flex justify-center gap-8 mt-6">
           <div>
-            <div className="font-display text-xl font-bold text-green-700">{contributors.length}</div>
-            <div className="text-xs text-gray-400">Total Members</div>
-          </div>
-          <div>
             <div className="font-display text-xl font-bold text-purple-600">{admins.length}</div>
             <div className="text-xs text-gray-400">Admins</div>
           </div>
@@ -255,6 +278,12 @@ export default async function ContributorsPage() {
             <div className="font-display text-xl font-bold text-blue-600">{editors.length}</div>
             <div className="text-xs text-gray-400">Editors</div>
           </div>
+          {isAdmin && (
+            <div>
+              <div className="font-display text-xl font-bold text-green-700">{members.length}</div>
+              <div className="text-xs text-gray-400">Members</div>
+            </div>
+          )}
           <div>
             <div className="font-display text-xl font-bold text-green-700">{totalPublished}</div>
             <div className="text-xs text-gray-400">Articles</div>
@@ -286,8 +315,8 @@ export default async function ContributorsPage() {
         </div>
       )}
 
-      {/* Members */}
-      {members.length > 0 && (
+      {/* Members — admin only */}
+      {isAdmin && members.length > 0 && (
         <div className="mb-10">
           <SectionHeading label="Members" count={members.length} color="green" />
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
@@ -298,7 +327,7 @@ export default async function ContributorsPage() {
         </div>
       )}
 
-      {contributors.length === 0 && (
+      {admins.length === 0 && editors.length === 0 && (
         <div className="text-center py-16 bg-gray-50 rounded-xl border border-dashed border-gray-200">
           <p className="text-gray-400">No contributors yet.</p>
         </div>
