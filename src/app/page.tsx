@@ -1,6 +1,7 @@
 import { unstable_cache } from 'next/cache'
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import Image from 'next/image'
 import { supabaseServer as supabase } from '@/lib/supabase-server'
 import { timeAgo, getPreferredTranslation } from '@/lib/utils'
 import ArticleCard from '@/components/ArticleCard'
@@ -415,17 +416,25 @@ function HolidayDecoration({ theme }: { theme: HolidayTheme }) {
 // DATA
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const ARTICLE_FIELDS = `
+// Full fields for single-article queries (content needed for excerpt fallback)
+const ARTICLE_FIELDS_FULL = `
   id, slug, category, status, featured, thumbnail_url, view_count, created_at, updated_at,
-  profiles(id, username, avatar_url, role, created_at),
+  profiles(username, avatar_url),
   article_translations(id, article_id, language, title, excerpt, content)
+`
+
+// List fields — omit content to avoid fetching full rich-text for every card
+const ARTICLE_FIELDS_LIST = `
+  id, slug, category, status, featured, thumbnail_url, view_count, created_at, updated_at,
+  profiles(username, avatar_url),
+  article_translations(id, article_id, language, title, excerpt)
 `
 
 const getFeaturedArticle = unstable_cache(
   async (): Promise<Article | null> => {
     const { data } = await supabase
       .from('articles')
-      .select(ARTICLE_FIELDS)
+      .select(ARTICLE_FIELDS_FULL)
       .eq('status', 'published')
       .eq('featured', true)
       .order('updated_at', { ascending: false })
@@ -441,7 +450,7 @@ const getRecentArticles = unstable_cache(
   async (): Promise<Article[]> => {
     const { data } = await supabase
       .from('articles')
-      .select(ARTICLE_FIELDS)
+      .select(ARTICLE_FIELDS_LIST)
       .eq('status', 'published')
       .order('updated_at', { ascending: false })
       .limit(6)
@@ -455,7 +464,7 @@ const getMostViewedArticles = unstable_cache(
   async (): Promise<Article[]> => {
     const { data } = await supabase
       .from('articles')
-      .select(ARTICLE_FIELDS)
+      .select(ARTICLE_FIELDS_LIST)
       .eq('status', 'published')
       .order('view_count', { ascending: false })
       .limit(6)
@@ -474,7 +483,7 @@ const getStats = unstable_cache(
     return { articles: articleCount ?? 0, users: userCount ?? 0 }
   },
   ['home-stats'],
-  { revalidate: 600, tags: ['article'] }
+  { revalidate: 600, tags: ['article', 'profile'] }
 )
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -630,11 +639,14 @@ export default async function HomePage() {
             <Link href={`/articles/${featured.slug}`} className="block group max-w-2xl mx-auto">
               <div className="bg-white border border-gray-200 rounded-xl overflow-hidden hover:border-green-300 hover:shadow-sm transition-all">
                 {featured.thumbnail_url && (
-                  <div className="h-56 overflow-hidden">
-                    <img
+                  <div className="relative h-56 overflow-hidden">
+                    <Image
                       src={featured.thumbnail_url}
                       alt={featuredTranslation.title ?? ''}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      fill
+                      sizes="(max-width: 768px) 100vw, 672px"
+                      className="object-cover group-hover:scale-105 transition-transform duration-300"
+                      priority
                     />
                   </div>
                 )}
