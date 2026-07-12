@@ -17,12 +17,13 @@ async redirects() {
     },
   ]
 },
-  images: {
-    remotePatterns: [
-      { protocol: 'https', hostname: '*.r2.dev' },
-      { protocol: 'https', hostname: '*.cloudflarestorage.com' },
-    ],
-  },
+images: {
+  remotePatterns: [
+    { protocol: 'https', hostname: '*.r2.dev' },
+    { protocol: 'https', hostname: '*.cloudflarestorage.com' },
+    { protocol: 'https', hostname: 'media.marapedia.org' },
+  ],
+},
   async headers() {
     return [
       {
