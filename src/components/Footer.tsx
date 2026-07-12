@@ -4,7 +4,8 @@ import Link from 'next/link'
 const FOOTER_LINKS = {
   Marapedia: [
     { label: 'About Marapedia', href: '/about' },
-    { label: 'How to Contribute', href: '/about#contribute' },
+    { label: 'How to Contribute', href: '/how-to-contribute' },
+    { label: 'About Developer', href: '/about-developer' },
     { label: 'Contact Us', href: '/about#contact' },
     { label: 'Privacy Policy', href: '/privacy' },
   ],

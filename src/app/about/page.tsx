@@ -1,6 +1,5 @@
 // app/about/page.tsx
 import type { Metadata } from 'next'
-import Link from 'next/link'
 
 export const metadata: Metadata = {
   title: 'About Marapedia — The Free Mara Encyclopedia',
@@ -164,39 +163,6 @@ export default function AboutPage() {
           </div>
         </section>
 
-        {/* How to Contribute */}
-        <section id="contribute">
-          <h2 className="font-display text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-            <span>✍️</span> How to Contribute
-          </h2>
-          <p className="text-gray-600 leading-relaxed mb-6">
-            Marapedia is built by the community, for the community. Anyone can contribute — you do not need to be an expert. If you know something about Mara history, culture, a village, a person, a song, or a tradition, your knowledge is valuable here.
-          </p>
-          <div className="space-y-4">
-            {[
-              { step: '1', title: 'Create an account', desc: 'Register for a free account to start contributing.', href: '/register', cta: 'Register now' },
-              { step: '2', title: 'Write an article', desc: 'Use our editor to write about any topic related to the Mara people. You can write in any of our four supported languages.', href: '/articles/create', cta: 'Start writing' },
-              { step: '3', title: 'Get reviewed', desc: 'New articles are reviewed by our editors before publishing to ensure quality and accuracy.' },
-              { step: '4', title: 'Keep it growing', desc: 'Edit and improve existing articles, add translations, and help build the encyclopedia together.' },
-            ].map(item => (
-              <div key={item.step} className="flex gap-4 items-start">
-                <div className="w-8 h-8 rounded-full bg-green-700 text-white flex items-center justify-center text-sm font-bold flex-shrink-0 mt-0.5">
-                  {item.step}
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900 mb-0.5">{item.title}</h3>
-                  <p className="text-sm text-gray-500 leading-relaxed">{item.desc}</p>
-                  {item.href && (
-                    <Link href={item.href} className="inline-block mt-2 text-xs text-green-700 font-medium hover:underline">
-                      {item.cta} →
-                    </Link>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
         {/* Content Guidelines */}
         <section className="bg-amber-50 border border-amber-100 rounded-2xl p-8">
           <h2 className="font-display text-xl font-bold text-amber-900 mb-3 flex items-center gap-2">
@@ -242,112 +208,6 @@ export default function AboutPage() {
                 <p className="text-sm font-semibold text-gray-800 group-hover:text-blue-700 transition-colors">Facebook</p>
                 <p className="text-xs text-gray-400">facebook.com/Marapedia</p>
               </div>
-            </a>
-          </div>
-        </section>
-
-        {/* CTA */}
-        <section className="text-center py-8 border-t border-gray-200">
-          <h2 className="font-display text-2xl font-bold text-gray-900 mb-3">
-            Ready to contribute?
-          </h2>
-          <p className="text-gray-500 mb-6 text-sm">
-            Join the community and help preserve Mara heritage for future generations.
-          </p>
-          <div className="flex justify-center gap-3 flex-wrap">
-            <Link href="/register"
-              className="px-6 py-3 bg-green-700 text-white rounded-xl font-semibold hover:bg-green-800 active:scale-95 transition-all shadow-sm shadow-green-900/20">
-              Create Account
-            </Link>
-            <Link href="/"
-              className="px-6 py-3 border border-gray-200 text-gray-600 rounded-xl font-medium hover:bg-gray-50 active:scale-95 transition-all">
-              Browse Articles
-            </Link>
-          </div>
-        </section>
-
-        {/* Founder */}
-        <section className="bg-white border border-gray-200 rounded-2xl p-8">
-          <h2 className="font-display text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-            <span>👤</span> About the Founder
-          </h2>
-
-          <div className="mb-1">
-            <h3 className="font-display text-xl font-bold text-gray-900">Marason Tleitu</h3>
-            <p className="text-sm text-green-700 font-medium mt-0.5">Founder & Developer of Marapedia</p>
-          </div>
-
-          <hr className="my-6 border-gray-100" />
-
-          <div className="space-y-6">
-            {[
-              {
-                emoji: '💡',
-                title: 'The Idea',
-                body: 'Marapedia began with a simple but powerful idea — to gather everything about the Mara people in one place and make it freely accessible to the world. Looking around, Marason noticed something missing: while the world was moving fast with technology and information, the Mara people did not yet have a dedicated digital space to call their own.',
-              },
-              {
-                emoji: '🤝',
-                title: 'Why Community?',
-                body: "Preserving an entire people's heritage is far too great a task for one person to carry alone. No single individual could document all the songs, histories, poems, stories, and traditions of the Mara people. So Marapedia was built in the spirit of Wikipedia — a community-driven encyclopedia where every Mara person, wherever they are in the world, can contribute, edit, and grow the knowledge together.",
-              },
-              {
-                emoji: '🎵',
-                title: 'What We Are Preserving',
-                body: 'The Mara people have a rich and unique culture — beautiful songs and hymns, poetry, histories of villages and clans, stories of leaders and community figures, and traditions that define who we are. Much of this exists only in the memories of our elders. Marapedia exists to capture all of it before it fades and give it a permanent home.',
-              },
-              {
-                emoji: '🌍',
-                title: 'Open to the World',
-                body: 'Marapedia is written in four languages — Mara, English, Myanmar, and Mizo — so that not only our own community but the wider world can discover and appreciate who the Mara people are. This openness is intentional. The Mara people have a story worth telling, and the world deserves to hear it.',
-              },
-              {
-                emoji: '🌱',
-                title: 'Building for the Future',
-                body: 'The deepest motivation behind Marapedia is the future. If we do not preserve our heritage in the digital world today, the next generation may never find it. Marapedia is being built so that tomorrow, a young Mara child anywhere in the world can open this encyclopedia and discover exactly who they are and where they come from.',
-              },
-            ].map(item => (
-              <div key={item.title}>
-                <h4 className="font-display font-bold text-gray-900 mb-1.5 flex items-center gap-1.5">
-                  <span>{item.emoji}</span> {item.title}
-                </h4>
-                <p className="text-sm text-gray-600 leading-relaxed">{item.body}</p>
-              </div>
-            ))}
-          </div>
-
-          {/* Quote */}
-          <div className="mt-8 bg-green-50 border border-green-100 rounded-xl p-6">
-            <p className="text-3xl text-green-600 leading-none mb-3">❝</p>
-            <p className="text-sm text-green-800 italic leading-relaxed font-medium">
-              Technology is moving fast. The Mara people deserve to be part of that world too — with our own history, our own songs, and our own voice preserved for every generation to come.
-            </p>
-            <p className="text-xs text-gray-400 font-semibold mt-3">
-              — Marason Tleitu, Founder of Marapedia
-            </p>
-          </div>
-
-          {/* Personal contact */}
-          <hr className="my-6 border-gray-100" />
-          <h4 className="font-display font-bold text-gray-900 mb-4">Get in Touch</h4>
-          <div className="space-y-3">
-            <a href="mailto:cleverstar02@gmail.com"
-              className="flex items-center gap-3 text-sm text-gray-600 hover:text-green-700 transition-colors group">
-              <div className="w-8 h-8 rounded-lg bg-green-50 border border-green-100 flex items-center justify-center flex-shrink-0 group-hover:bg-green-100 transition-colors">
-                <svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                </svg>
-              </div>
-              cleverstar02@gmail.com
-            </a>
-            <a href="tel:0182159223"
-              className="flex items-center gap-3 text-sm text-gray-600 hover:text-green-700 transition-colors group">
-              <div className="w-8 h-8 rounded-lg bg-green-50 border border-green-100 flex items-center justify-center flex-shrink-0 group-hover:bg-green-100 transition-colors">
-                <svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                </svg>
-              </div>
-              0182159223
             </a>
           </div>
         </section>

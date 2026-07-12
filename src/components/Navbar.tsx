@@ -530,6 +530,10 @@ export default function Navbar() {
               <p className="px-5 pt-1 pb-1 text-[10px] font-bold text-gray-400 tracking-[0.15em] uppercase">Marapedia</p>
               <DrawerItem icon="📖" label="About" subtitle="Our mission & story"
                 href="/about" onClick={() => setProfileDrawerOpen(false)} />
+              <DrawerItem icon="✍️" label="How to Contribute" subtitle="Help grow the encyclopedia"
+                href="/how-to-contribute" onClick={() => setProfileDrawerOpen(false)} />
+              <DrawerItem icon="👤" label="About Developer" subtitle="Meet the founder"
+                href="/about-developer" onClick={() => setProfileDrawerOpen(false)} />
               <DrawerItem icon="🔒" label="Privacy Policy" subtitle="How we handle your data"
                 href="/privacy" onClick={() => setProfileDrawerOpen(false)} />
             </div>
