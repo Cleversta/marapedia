@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useRef, useMemo } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useRouter, usePathname } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { CATEGORIES } from '@/lib/utils'
@@ -187,15 +188,14 @@ export default function Navbar() {
   }
 
   function UserAvatar({ size = 8 }: { size?: number }) {
-    const dim = `${size * 4}px`
+    const px = size * 4
     if (profile?.avatar_url)
       return (
-        <img src={profile.avatar_url} alt={profile.username}
-          style={{ width: dim, height: dim }}
+        <Image src={profile.avatar_url} alt={profile.username} width={px} height={px}
           className="rounded-full object-cover object-[center_20%] ring-2 ring-white shadow-sm" />
       )
     return (
-      <div style={{ width: dim, height: dim }}
+      <div style={{ width: `${px}px`, height: `${px}px` }}
         className="rounded-full bg-gradient-to-br from-green-500 to-green-700 text-white flex items-center justify-center text-xs font-bold ring-2 ring-white shadow-sm">
         {profile?.username?.[0]?.toUpperCase() ?? 'U'}
       </div>
@@ -306,7 +306,7 @@ export default function Navbar() {
 
               {/* Brand */}
               <div className="relative z-10 flex items-center gap-2 mb-3">
-                <img src="/MARAPEDIA.png" alt="Marapedia" className="w-7 h-7 object-contain opacity-90" />
+                <Image src="/MARAPEDIA.png" alt="Marapedia" width={28} height={28} className="w-7 h-7 object-contain opacity-90" />
                 <span className="text-white/55 text-[10px] font-bold tracking-[0.22em] uppercase">Marapedia</span>
               </div>
 
@@ -448,7 +448,7 @@ export default function Navbar() {
                 <div className="w-16 h-16 rounded-full ring-[3px] ring-white/30 overflow-hidden
                   bg-gradient-to-br from-green-400 to-green-700 flex items-center justify-center">
                   {profile?.avatar_url ? (
-                    <img src={profile.avatar_url} alt={profile.username}
+                    <Image src={profile.avatar_url} alt={profile.username} width={64} height={64}
                       className="w-full h-full object-cover object-[center_20%]" />
                   ) : (
                     <span className="text-2xl font-black text-white">
@@ -584,7 +584,7 @@ export default function Navbar() {
             <Link href="/" className="shrink-0 flex items-center gap-2.5 group">
               <div className="relative">
                 <div className="absolute inset-0 rounded-full bg-green-100 scale-0 group-hover:scale-110 transition-transform duration-300 ease-out" />
-                <img src="/MARAPEDIA.png" alt="Marapedia"
+                <Image src="/MARAPEDIA.png" alt="Marapedia" width={44} height={44} priority
                   className="relative h-11 w-11 object-contain drop-shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:drop-shadow-md" />
               </div>
               <div className="flex flex-col leading-none">

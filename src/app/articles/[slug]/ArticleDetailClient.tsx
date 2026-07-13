@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { supabase } from '@/lib/supabase'
 import { getCategoryInfo, formatDate, timeAgo, getArticleTypeLabel } from '@/lib/utils'
 import SongViewer from '@/components/SongViewer'
@@ -364,7 +365,7 @@ export default function ArticleDetailClient({ article }: { article: Article }) {
             <div className="flex items-center gap-2.5 mb-5">
               <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-[10px] font-bold text-green-800 overflow-hidden ring-1 ring-stone-200 shrink-0">
                 {prof?.avatar_url
-                  ? <img src={prof.avatar_url} alt="" className="w-full h-full object-cover" />
+                  ? <Image src={prof.avatar_url} alt="" width={32} height={32} className="w-full h-full object-cover" />
                   : prof?.username?.[0]?.toUpperCase() ?? 'A'}
               </div>
               <div className="flex items-center gap-1.5 flex-wrap text-xs text-stone-400">
@@ -414,10 +415,10 @@ export default function ArticleDetailClient({ article }: { article: Article }) {
             {allImages.length > 0 && (
               <div className="img-strip flex gap-2 overflow-x-auto pb-1 mb-6">
                 {allImages.map((img, i) => (
-                  <div key={i} className="img-thumb shrink-0 shadow-sm"
+                  <div key={i} className="img-thumb shrink-0 shadow-sm relative"
                     style={{ width: '96px', height: '68px', borderRadius: '8px' }}
                     onClick={() => setLightboxIndex(i)}>
-                    <img src={img.url} alt={img.caption ?? `Photo ${i + 1}`} />
+                    <Image src={img.url} alt={img.caption ?? `Photo ${i + 1}`} fill sizes="96px" className="object-cover rounded-lg" />
                     {i === 0 && (
                       <span className="absolute top-1 left-1 text-[8px] bg-black/50 text-white/90 px-1.5 py-0.5 rounded-full leading-tight">Cover</span>
                     )}

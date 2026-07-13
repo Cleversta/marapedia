@@ -12,6 +12,8 @@ export type Category =
   | 'culture'
   | 'religion'
   | 'language'
+  | 'about'
+  | 'knowledge'
   | 'other'
 
 export type ArticleStatus = 'published' | 'draft' | 'archived'

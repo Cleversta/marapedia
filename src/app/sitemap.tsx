@@ -12,6 +12,8 @@ const CATEGORIES = [
   'culture',
   'religion',
   'language',
+  'about',
+  'knowledge',
   'other',
 ]
 

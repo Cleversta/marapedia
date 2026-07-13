@@ -4,10 +4,10 @@ import { revalidateTag } from 'next/cache'
 
 export async function POST(req: NextRequest) {
   try {
-    const { slug, secret } = await req.json()
+    const { slug } = await req.json()
 
-    if (secret !== process.env.REVALIDATE_SECRET) {
-      return NextResponse.json({ error: 'Invalid secret' }, { status: 401 })
+    if (!slug || typeof slug !== 'string') {
+      return NextResponse.json({ error: 'Missing or invalid slug' }, { status: 400 })
     }
     revalidateTag(`article-${slug}`, 'max')
     revalidateTag('article', 'max')

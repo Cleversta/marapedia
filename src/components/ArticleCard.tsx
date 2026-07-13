@@ -1,4 +1,5 @@
 'use client'
+import Image from 'next/image'
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { getCategoryInfo, timeAgo, makeExcerpt, getPreferredTranslation } from '@/lib/utils'
@@ -169,10 +170,12 @@ export default function ArticleCard({ article, hideImage = false }: Props) {
         {!hideImage && (
           article.thumbnail_url ? (
             <div className="relative h-44 overflow-hidden flex-shrink-0 bg-gray-100">
-              <img
+              <Image
                 src={article.thumbnail_url}
                 alt={translation.title ?? ''}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                fill
+                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                className="object-cover group-hover:scale-105 transition-transform duration-500"
               />
               <div className="absolute top-2 right-2" onClick={e => e.preventDefault()}>
 <FavoriteButton
