@@ -49,7 +49,7 @@ export default function AboutDeveloperPage() {
               collecting Mara song lyrics, and later turned it into a mobile app so anyone
               could carry the songs with them and read the lyrics on the go.
             </p>
-            
+            <a
               href="https://play.google.com/store/apps/details?id=com.marahlabu.marahlaapp&pcampaignid=web_share"
               target="_blank"
               rel="noopener noreferrer"
@@ -74,27 +74,27 @@ export default function AboutDeveloperPage() {
               {
                 emoji: '💡',
                 title: 'The Idea',
-                body: 'Marapedia began with a simple but powerful idea — to gather everything about the Mara people in one place and make it freely accessible to the world. Looking around, Marason noticed something missing: while the world was moving fast with technology and information, the Mara people did not yet have a dedicated digital space to call their own.',
+                body: 'Marapedia began with a simple but powerful idea — to gather everything about the Mara people in one place and make it freely accessible to the world. Looking around, Marason noticed that there was no single source where you could learn about Mara history, culture, and heritage all in one place.',
               },
               {
                 emoji: '🤝',
                 title: 'Why Community?',
-                body: "Preserving an entire people's heritage is far too great a task for one person to carry alone. No single individual could document all the songs, histories, poems, stories, and traditions of the Mara people. So Marapedia was built in the spirit of Wikipedia — a community-driven encyclopedia where every Mara person, wherever they are in the world, can contribute, edit, and grow the knowledge together.",
+                body: "Preserving an entire people's heritage is far too great a task for one person to carry alone. No single individual could document all the songs, histories, poems, stories, and traditions. That's why Marapedia is built as a community project — where anyone from the Mara community can contribute, edit, and help preserve our shared legacy.",
               },
               {
                 emoji: '🎵',
                 title: 'What We Are Preserving',
-                body: 'The Mara people have a rich and unique culture — beautiful songs and hymns, poetry, histories of villages and clans, stories of leaders and community figures, and traditions that define who we are. Much of this exists only in the memories of our elders. Marapedia exists to capture all of it before it fades and give it a permanent home.',
+                body: 'The Mara people have a rich and unique culture — beautiful songs and hymns, poetry, histories of villages and clans, stories of leaders and community figures, and traditions passed down through generations. Much of this knowledge exists only in memory, scattered across individuals and communities.',
               },
               {
                 emoji: '🌍',
                 title: 'Open to the World',
-                body: 'Marapedia is written in four languages — Mara, English, Myanmar, and Mizo — so that not only our own community but the wider world can discover and appreciate who the Mara people are. This openness is intentional. The Mara people have a story worth telling, and the world deserves to hear it.',
+                body: 'Marapedia is written in four languages — Mara, English, Myanmar, and Mizo — so that not only our own community but the wider world can discover and appreciate who the Mara people are, where we come from, and what makes our culture unique.',
               },
               {
                 emoji: '🌱',
                 title: 'Building for the Future',
-                body: 'The deepest motivation behind Marapedia is the future. If we do not preserve our heritage in the digital world today, the next generation may never find it. Marapedia is being built so that tomorrow, a young Mara child anywhere in the world can open this encyclopedia and discover exactly who they are and where they come from.',
+                body: 'The deepest motivation behind Marapedia is the future. If we do not preserve our heritage in the digital world today, the next generation may never find it. Marapedia is being built as a lasting home for Mara culture — one that will outlive us all.',
               },
             ].map(item => (
               <div key={item.title}>
