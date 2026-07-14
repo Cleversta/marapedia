@@ -32,6 +32,27 @@ export default function AboutDeveloperPage() {
 
           <hr className="my-6 border-gray-100" />
 
+          {/* Personal introduction */}
+          <div className="mb-6">
+            <h4 className="font-display font-bold text-gray-900 mb-1.5 flex items-center gap-1.5">
+              <span>👋</span> Introduction
+            </h4>
+            <p className="text-sm text-gray-600 leading-relaxed">
+              My name is Marason Tleitu. I&apos;m 25 years old, from the Mara community,
+              currently based in Malaysia. I&apos;m a self-taught developer, building apps
+              and websites for the Mara people in whatever time I can find outside my
+              day-to-day life abroad.
+            </p>
+            <p className="text-sm text-gray-600 leading-relaxed mt-3">
+              Being away from home made me think more, not less, about where I come from.
+              Marapedia is my way of staying connected to that — and making sure our
+              history, songs, and language have a home online that anyone, anywhere,
+              can reach.
+            </p>
+          </div>
+
+          <hr className="my-6 border-gray-100" />
+
           <div className="space-y-6">
             {[
               {
